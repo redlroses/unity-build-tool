@@ -1,0 +1,74 @@
+﻿================================================================================
+ BATCH BUILD EXECUTION SUMMARY
+================================================================================
+  Root Path:     O:\Other Projects\unity-build-tool\Build\v1.0.6 2026-11-05 01-03
+  Total Builds:  1
+  Succeeded:     1
+  Failed:        0
+  Cancelled:     0
+  Total Time:    3,2s
+  Combined Size: 91,26 MB
+================================================================================
+
+================================================================================
+ BUILD REPORT: Windows Standalone (StandaloneWindows64)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.6 2026-11-05 01-03/Windows Standalone_1.0.6/unity-build-tool.exe
+  Total Size:    91,26 MB
+  Duration:      3,2s
+  Errors:        0
+  Warnings:      0
+  Built At:      2026-11-04 20:03:05 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                        3,2s
+    * Preprocess Player                                   0,7s (1 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       0,6s
+      * Prebuild Cleanup and Recompile                      0,3s
+        * Compile scripts                                     0,3s
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,0s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,0s
+    * Prepare assets for target platform                  0,0s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,2s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,2s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Building Resources/unity_builtin_extra              0,1s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                            0,9s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                            0,8s
+      * Report output files                                 0,0s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [dll] UnityPlayer.dll                                 35,42 MB
+    [dll] mono-2.0-bdwgc.dll                               7,47 MB
+    [unity default resources] unity default resources                          5,61 MB
+    [dll] D3D12Core.dll                                    4,51 MB
+    [DependentManagedLibrary] mscorlib.dll                                     4,42 MB
+    [DependentManagedLibrary] System.Xml.dll                                   3,01 MB
+    [StreamingResourceFile] globalgamemanagers.assets.resS                   2,67 MB
+    [DependentManagedLibrary] System.dll                                       2,52 MB
+    [ManagedEngineAPI] UnityEngine.UIElementsModule.dll                 2,24 MB
+    [DependentManagedLibrary] System.Data.dll                                  2,03 MB
+    [ManagedEngineAPI] UnityEngine.CoreModule.dll                       1,88 MB
+    [exe] UnityCrashHandler64.exe                          1,66 MB
+    [dll] dstoragecore.dll                                 1,41 MB
+    [DependentManagedLibrary] System.Core.dll                                  1,06 MB
+    [StreamingResourceFile] sharedassets0.assets.resS                        1,00 MB
+    ... and 142 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
