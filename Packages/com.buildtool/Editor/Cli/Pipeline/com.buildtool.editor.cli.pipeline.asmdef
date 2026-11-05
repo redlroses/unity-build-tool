@@ -1,0 +1,30 @@
+﻿{
+  "name": "com.buildtool.editor.cli.pipeline",
+  "rootNamespace": "BuildTool.Editor.Cli",
+  "references": [
+    "com.buildtool.editor",
+    "com.buildtool.editor.cli",
+    "Unity.Pipeline",
+    "Unity.Pipeline.Attributes"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "BUILDTOOL_CLI_EXPERIMENTAL",
+    "HAS_UNITY_PIPELINE"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.pipeline",
+      "expression": "",
+      "define": "HAS_UNITY_PIPELINE"
+    }
+  ],
+  "noEngineReferences": false
+}

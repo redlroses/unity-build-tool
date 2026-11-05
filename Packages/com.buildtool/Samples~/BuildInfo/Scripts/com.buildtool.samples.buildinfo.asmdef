@@ -1,0 +1,18 @@
+{
+  "name": "com.buildtool.samples.buildinfo",
+  "rootNamespace": "BuildTool.Samples.BuildInfo",
+  "references": [
+    "com.buildtool.tracking.runtime",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

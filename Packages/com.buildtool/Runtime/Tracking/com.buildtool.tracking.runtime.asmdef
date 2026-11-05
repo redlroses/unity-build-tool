@@ -1,0 +1,14 @@
+{
+  "name": "com.buildtool.tracking.runtime",
+  "rootNamespace": "BuildTool.Tracking",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

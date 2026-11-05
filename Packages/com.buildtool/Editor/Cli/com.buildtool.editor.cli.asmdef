@@ -1,0 +1,19 @@
+﻿{
+  "name": "com.buildtool.editor.cli",
+  "rootNamespace": "BuildTool.Editor.Cli",
+  "references": [
+    "com.buildtool.editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
+

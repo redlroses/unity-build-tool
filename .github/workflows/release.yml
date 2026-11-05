@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run (do not commit or publish release)'
+        required: false
+        default: false
+        type: boolean
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse and validate version
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW_VER="${{ inputs.version }}"
+          else
+            RAW_VER="${{ github.ref_name }}"
+          fi
+          CLEAN_VER="${RAW_VER#v}"
+          if [[ ! "$CLEAN_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Error: Version '$CLEAN_VER' is not valid SemVer format"
+            exit 1
+          fi
+          echo "version=${CLEAN_VER}" >> $GITHUB_OUTPUT
+          echo "tag=v${CLEAN_VER}" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          jq --arg ver "${{ steps.vars.outputs.version }}" '.version = $ver' Packages/com.buildtool/package.json > temp.json
+          mv temp.json Packages/com.buildtool/package.json
+          git diff Packages/com.buildtool/package.json
+
+      - name: Commit version bump
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Packages/com.buildtool/package.json
+          if ! git diff --staged --quiet; then
+            git commit -m "Release v${{ steps.vars.outputs.version }}"
+            git push origin main
+          fi
+
+      - name: Create and push tag
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run }}
+        run: |
+          git tag -f -a ${{ steps.vars.outputs.tag }} -m "Release ${{ steps.vars.outputs.tag }}"
+          git push -f origin ${{ steps.vars.outputs.tag }}
+
+      - name: Build unitypackage
+        run: |
+          python .github/scripts/pack_unitypackage.py Packages/com.buildtool "BuildTool.${{ steps.vars.outputs.version }}.unitypackage"
+
+      - name: Extract release notes
+        run: |
+          python .github/scripts/extract_release_notes.py "${{ steps.vars.outputs.version }}" RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.vars.outputs.version, '-') }}
+          files: BuildTool.${{ steps.vars.outputs.version }}.unitypackage

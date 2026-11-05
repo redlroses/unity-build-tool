@@ -1,0 +1,19 @@
+{
+  "name": "com.buildtool.samples.buildmanifest",
+  "rootNamespace": "BuildTool.Samples.BuildManifest",
+  "references": [
+    "com.buildtool.editor",
+    "com.buildtool.editor.cli.pipeline"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

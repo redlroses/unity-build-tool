@@ -1,0 +1,6 @@
+Tests/
+Tests.meta
+.git/
+.gitignore
+.gitattributes
+.editorconfig

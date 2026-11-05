@@ -1,0 +1,30 @@
+{
+  "name": "com.buildtool.editor",
+  "rootNamespace": "BuildTool.Editor",
+  "references": [
+    "com.buildtool.tracking.editor",
+    "com.buildtool.tracking.runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.pipeline",
+      "expression": "",
+      "define": "HAS_UNITY_PIPELINE"
+    },
+    {
+      "name": "com.unity.addressables",
+      "expression": "",
+      "define": "HAS_ADDRESSABLES"
+    }
+  ],
+  "noEngineReferences": false
+}
