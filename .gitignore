@@ -1,0 +1,52 @@
+# Unity directories
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+.utmp/
+
+# Build directories
+/[Bb]uild/
+/[Bb]uilds/
+
+# Third-party tools directories
+.vs/
+.vscode/
+.gradle/
+.idea/
+ExportedObj/
+
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.vsconfig
+
+*.log
+
+########################################
+# Addressables
+*addressables_content_state*
+
+# Host project sample imports and third-party packages
+/[Aa]ssets/[Ss]amples/
+/[Aa]ssets/[Ss]amples.meta
+/[Aa]ssets/TextMesh Pro/
+/[Aa]ssets/TextMesh Pro.meta
+/[Aa]ssets/Resources/BuildInfo.asset*
+
+# Host project settings (keep only ProjectVersion.txt)
+/ProjectSettings/*
+!/ProjectSettings/ProjectVersion.txt
+
+# Packages lock file
+Packages/packages-lock.json
+*.unitypackage
