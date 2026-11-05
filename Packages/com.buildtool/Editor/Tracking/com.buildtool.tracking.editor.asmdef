@@ -1,0 +1,20 @@
+{
+  "name": "com.buildtool.tracking.editor",
+  "rootNamespace": "BuildTool.Tracking.Editor",
+  "references": [
+    "com.buildtool.tracking.runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "BUILDTOOL_TRACKING"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

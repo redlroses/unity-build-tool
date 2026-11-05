@@ -1,0 +1,31 @@
+{
+  "name": "com.buildtool",
+  "displayName": "Build Tool",
+  "version": "1.0.0",
+  "license": "MIT",
+  "unity": "6000.0",
+  "description": "An automation tool that allows you to configure and run sequential builds for different platforms through a dedicated editor window. It has a modular structure and supports custom extensions for automating pre- and post-build tasks. The tool also tracks a shared build index via Git, helping you keep track of build versions and status.",
+  "keywords": [
+    "build",
+    "automation",
+    "profiles",
+    "extensibility"
+  ],
+  "category": "Build Pipeline",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  },
+  "samples": [
+    {
+      "displayName": "Build Manifest Extension",
+      "description": "Example showing how to implement a custom build pipeline extension with UI Toolkit settings, pre/post-build hooks, and CLI support.",
+      "path": "Samples~/BuildManifest"
+    },
+    {
+      "displayName": "Build Info Display",
+      "description": "Demonstrates runtime build information display using BuildInfoDisplay prefab and BuildInfoProvider API.",
+      "path": "Samples~/BuildInfo"
+    }
+  ],
+  "unityRelease": "0f1"
+}
