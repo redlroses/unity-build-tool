@@ -16,4 +16,4 @@ jobs:
 
       - name: Validate package.json
         run: |
-          jq . Packages/com.buildtool/package.json
+          jq . Packages/com.redliketeam.buildtool/package.json

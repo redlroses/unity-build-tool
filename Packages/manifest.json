@@ -1,12 +1,11 @@
 {
   "dependencies": {
     "com.unity.addressables": "2.9.1",
-    "com.unity.nuget.newtonsoft-json": "3.2.1",
-    "com.unity.pipeline": "0.10.0-exp.1",
-    "com.unity.test-framework": "1.4.5",
-    "com.unity.ugui": "2.0.0"
+    "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.unity.test-framework": "1.7.0",
+    "com.unity.ugui": "2.5.0"
   },
   "testables": [
-    "com.buildtool"
+    "com.redliketeam.buildtool"
   ]
 }

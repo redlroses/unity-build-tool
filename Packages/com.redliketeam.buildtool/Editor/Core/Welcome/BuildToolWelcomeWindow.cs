@@ -14,28 +14,28 @@ namespace BuildTool.Editor
     public class BuildToolWelcomeWindow : EditorWindow
     {
         public const string WindowTitle = "Welcome to Build Tool";
-        public const string UssPath = "Packages/com.buildtool/Editor/Core/Welcome/BuildToolWelcomeWindow.uss";
+        public static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Welcome/BuildToolWelcomeWindow.uss");
         public const string DefaultVersion = "1.0.0";
         public const string ShowOnUpdatePrefKey = "build_tool_welcome_show_on_update";
         public const string ShowOnStartPrefKey = "build_tool_welcome_show_on_startup";
         public const string LastVersionPrefKey = "build_tool_welcome_last_version";
 
-        private const string PackageJsonPath = "Packages/com.buildtool/package.json";
-        private const string ChangelogPath = "Packages/com.buildtool/CHANGELOG.md";
+        private static string PackageJsonPath => PackagePathHelper.GetAssetPath("package.json");
+        private static string ChangelogPath => PackagePathHelper.GetAssetPath("CHANGELOG.md");
         private const string RootChangelogPath = "CHANGELOG.md";
-        private const string ReadmePath = "Packages/com.buildtool/README.md";
+        private static string ReadmePath => PackagePathHelper.GetAssetPath("README.md");
         private const string RootReadmePath = "README.md";
-        public const string BuildManifestSamplePath = "Packages/com.buildtool/Samples~/BuildManifest";
-        public const string BuildInfoSamplePath = "Packages/com.buildtool/Samples~/BuildInfo";
-        public const string SamplePath = BuildManifestSamplePath;
+        public static string BuildManifestSamplePath => PackagePathHelper.GetAssetPath("Samples~/BuildManifest");
+        public static string BuildInfoSamplePath => PackagePathHelper.GetAssetPath("Samples~/BuildInfo");
+        public static string SamplePath => BuildManifestSamplePath;
         public const string AuthorName = "redlroses";
         public const string AuthorEmail = "redlroses.rlr@gmail.com";
         public const string AuthorGitHubUrl = "https://github.com/redlroses";
-        private const string LicenseNotice = "MIT License • Copyright (c) 2026 redlroses";
+        private const string LicenseNotice = "Copyright (c) 2026 RedLikeTeam";
         private const string GitRepoUrl = "https://github.com/redlroses/unity-build-tool";
         private const string GitIssuesUrl = "https://github.com/redlroses/unity-build-tool/issues";
         private const string GitPackageUrl =
-            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.buildtool#v1.0.0";
+            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.0";
 
         internal enum WelcomeTab
         {
@@ -73,6 +73,7 @@ namespace BuildTool.Editor
             }
         }
 
+        [MenuItem("Tools/Build Tool/Welcome Screen", priority = 20)]
         [MenuItem("Window/Build Tool/Welcome Screen", priority = 20)]
         public static void ShowWindow()
         {
@@ -168,17 +169,7 @@ namespace BuildTool.Editor
 
         private void LoadStyleSheet(VisualElement root)
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
-            if (styleSheet == null)
-            {
-                var guids = AssetDatabase.FindAssets("BuildToolWelcomeWindow t:StyleSheet");
-                if (guids.Length > 0)
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
-                }
-            }
-
+            var styleSheet = PackagePathHelper.LoadStyleSheet("Editor/Core/Welcome/BuildToolWelcomeWindow.uss", "BuildToolWelcomeWindow");
             if (styleSheet != null && !root.styleSheets.Contains(styleSheet))
             {
                 root.styleSheets.Add(styleSheet);
@@ -765,10 +756,12 @@ namespace BuildTool.Editor
                 UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(BuildToolWelcomeWindow).Assembly);
             if (packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath))
             {
-                const string prefix = "Packages/com.buildtool/";
+                var prefix = $"{PackagePathHelper.PackageRoot}/";
                 var relativeSub = normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
                     ? normalized.Substring(prefix.Length)
-                    : normalized;
+                    : (normalized.StartsWith("Packages/com.buildtool/", StringComparison.OrdinalIgnoreCase)
+                        ? normalized.Substring("Packages/com.buildtool/".Length)
+                        : normalized);
                 var inPackage = Path.Combine(packageInfo.resolvedPath, relativeSub);
                 if (Directory.Exists(inPackage))
                 {
@@ -788,7 +781,7 @@ namespace BuildTool.Editor
                 return;
             }
 
-            var pkgPath = Path.GetFullPath("Packages/com.buildtool");
+            var pkgPath = Path.GetFullPath(PackagePathHelper.PackageRoot);
             if (Directory.Exists(pkgPath))
             {
                 EditorUtility.RevealInFinder(pkgPath);

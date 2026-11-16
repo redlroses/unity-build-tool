@@ -9,7 +9,7 @@ namespace BuildTool.Editor.Notifications
     public static class BuildNotificationSettingsProvider
     {
         public const string SettingsPath = "Project/Build Tool/Notifications";
-        private const string UssPath = "Packages/com.buildtool/Editor/Core/Notifications/BuildNotificationSettings.uss";
+        private static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Notifications/BuildNotificationSettings.uss");
 
         [SettingsProvider]
         public static SettingsProvider CreateSettingsProvider()
@@ -102,17 +102,7 @@ namespace BuildTool.Editor.Notifications
 
         private static void LoadStyleSheet(VisualElement rootElement)
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
-            if (styleSheet == null)
-            {
-                var guids = AssetDatabase.FindAssets("BuildNotificationSettings t:StyleSheet");
-                if (guids.Length > 0)
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
-                }
-            }
-
+            var styleSheet = PackagePathHelper.LoadStyleSheet("Editor/Core/Notifications/BuildNotificationSettings.uss", "BuildNotificationSettings");
             if (styleSheet != null && !rootElement.styleSheets.Contains(styleSheet))
             {
                 rootElement.styleSheets.Add(styleSheet);

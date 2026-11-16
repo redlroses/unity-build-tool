@@ -6,9 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- Headers should be listed in this order: Added, Changed, Deprecated, Removed, Fixed, Security -->
 
-## [1.0.0] - 05.11.2026
+## [1.0.0] - 2026-11-05
 ### Added
-- Multi-platform sequential build execution with dedicated Build Window UI (`Tools → Build → Show Build Window`).
+- Multi-platform sequential build execution with dedicated Build Window UI (`Tools → Build Tool → Show Build Window`).
 - Modular Git Build Tracking: tracking module under `BuildTool.Tracking` (`com.buildtool.tracking.editor` and `com.buildtool.tracking.runtime`), with orphan branch tracking, remote synchronization, and automated build indexing.
 - Multi-channel notification engine (Telegram, Discord, Slack, Generic Webhook, Desktop toasts) with batch summary notification cards and per-profile reporting.
 - Command Line Interface support with both classic batchmode runner (`BuildCLI`) and native Unity CLI commands (`build:run`, `build:clean`).

@@ -11,7 +11,13 @@ namespace BuildTool.Tracking.Editor
     public static class BuildTrackingSettingsProvider
     {
         public const string SettingsPath = "Project/Build Tool/Tracking";
-        private const string UssPath = "Packages/com.buildtool/Editor/Tracking/BuildTrackingSettings.uss";
+
+        private static string GetUssPath()
+        {
+            var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(BuildTrackingSettingsProvider).Assembly);
+            var root = info != null && !string.IsNullOrEmpty(info.assetPath) ? info.assetPath : "Packages/com.redliketeam.buildtool";
+            return $"{root}/Editor/Tracking/BuildTrackingSettings.uss";
+        }
 
         private static bool s_IsBranchIgnored;
         private static bool s_HasCheckedRefspec;
@@ -155,7 +161,7 @@ namespace BuildTool.Tracking.Editor
 
         private static void LoadStyleSheet(VisualElement rootElement)
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(GetUssPath());
             if (styleSheet == null)
             {
                 var guids = AssetDatabase.FindAssets("BuildTrackingSettings t:StyleSheet");
@@ -166,7 +172,7 @@ namespace BuildTool.Tracking.Editor
                 }
             }
 
-            if (styleSheet != null)
+            if (styleSheet != null && !rootElement.styleSheets.Contains(styleSheet))
             {
                 rootElement.styleSheets.Add(styleSheet);
             }

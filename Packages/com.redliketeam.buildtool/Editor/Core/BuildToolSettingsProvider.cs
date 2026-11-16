@@ -14,7 +14,7 @@ namespace BuildTool.Editor
     public static class BuildToolSettingsProvider
     {
         private const string SettingsPath = "Project/Build Tool";
-        private const string UssPath = "Packages/com.buildtool/Editor/Core/BuildToolSettings.uss";
+        private static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/BuildToolSettings.uss");
 
         [SettingsProvider]
         public static SettingsProvider CreateSettingsProvider()
@@ -416,17 +416,7 @@ namespace BuildTool.Editor
 
         private static void LoadStyleSheet(VisualElement rootElement)
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
-            if (styleSheet == null)
-            {
-                var guids = AssetDatabase.FindAssets("BuildToolSettings t:StyleSheet");
-                if (guids.Length > 0)
-                {
-                    var foundPath = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(foundPath);
-                }
-            }
-
+            var styleSheet = PackagePathHelper.LoadStyleSheet("Editor/Core/BuildToolSettings.uss", "BuildToolSettings");
             if (styleSheet != null && !rootElement.styleSheets.Contains(styleSheet))
             {
                 rootElement.styleSheets.Add(styleSheet);

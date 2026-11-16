@@ -12,7 +12,7 @@ namespace BuildTool.Editor
     public class BuildToolWizardWindow : EditorWindow
     {
         private const string WindowTitle = "Build Tool Wizard";
-        private const string UssPath = "Packages/com.buildtool/Editor/Core/Wizard/BuildToolWizardWindow.uss";
+        private static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Wizard/BuildToolWizardWindow.uss");
 
         private bool _isApplyingChanges;
         private string _busyModuleKey;
@@ -24,7 +24,7 @@ namespace BuildTool.Editor
         private bool _isInstallingPackage;
         private EditorApplication.CallbackFunction _activeProgressAction;
 
-        [MenuItem("Tools/Build/Setup Wizard", priority = 2)]
+        [MenuItem("Tools/Build Tool/Setup Wizard", priority = 2)]
         public static void ShowWindow()
         {
             var window = GetWindow<BuildToolWizardWindow>(WindowTitle);
@@ -208,18 +208,8 @@ namespace BuildTool.Editor
 
         private void LoadStyleSheet(VisualElement root)
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
-            if (styleSheet == null)
-            {
-                var guids = AssetDatabase.FindAssets("BuildToolWizardWindow t:StyleSheet");
-                if (guids.Length > 0)
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
-                }
-            }
-
-            if (styleSheet != null)
+            var styleSheet = PackagePathHelper.LoadStyleSheet("Editor/Core/Wizard/BuildToolWizardWindow.uss", "BuildToolWizardWindow");
+            if (styleSheet != null && !root.styleSheets.Contains(styleSheet))
             {
                 root.styleSheets.Add(styleSheet);
             }

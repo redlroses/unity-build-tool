@@ -50,16 +50,16 @@ jobs:
       - name: Update package.json version
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          jq --arg ver "${{ steps.vars.outputs.version }}" '.version = $ver' Packages/com.buildtool/package.json > temp.json
-          mv temp.json Packages/com.buildtool/package.json
-          git diff Packages/com.buildtool/package.json
+          jq --arg ver "${{ steps.vars.outputs.version }}" '.version = $ver' Packages/com.redliketeam.buildtool/package.json > temp.json
+          mv temp.json Packages/com.redliketeam.buildtool/package.json
+          git diff Packages/com.redliketeam.buildtool/package.json
 
       - name: Commit version bump
         if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Packages/com.buildtool/package.json
+          git add Packages/com.redliketeam.buildtool/package.json
           if ! git diff --staged --quiet; then
             git commit -m "Release v${{ steps.vars.outputs.version }}"
             git push origin main
@@ -73,7 +73,7 @@ jobs:
 
       - name: Build unitypackage
         run: |
-          python .github/scripts/pack_unitypackage.py Packages/com.buildtool "BuildTool.${{ steps.vars.outputs.version }}.unitypackage"
+          python .github/scripts/pack_unitypackage.py Packages/com.redliketeam.buildtool "BuildTool.${{ steps.vars.outputs.version }}.unitypackage"
 
       - name: Extract release notes
         run: |

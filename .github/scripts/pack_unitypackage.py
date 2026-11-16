@@ -86,6 +86,6 @@ DefaultImporter:
                 tar.addfile(asset_info, io.BytesIO(asset_bytes))
 
 if __name__ == '__main__':
-    src = sys.argv[1] if len(sys.argv) > 1 else 'Packages/com.buildtool'
+    src = sys.argv[1] if len(sys.argv) > 1 else 'Packages/com.redliketeam.buildtool'
     out = sys.argv[2] if len(sys.argv) > 2 else 'BuildTool.unitypackage'
     pack(src, out)

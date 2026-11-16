@@ -16,7 +16,7 @@ namespace BuildTool.Editor
 {
     public class BuildWindow : EditorWindow
     {
-        private const string UssPath = "Packages/com.buildtool/Editor/Core/BuildWindow.uss";
+        private static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/BuildWindow.uss");
 
         private HashSet<BuildProfile> _availableProfiles = new();
         private HashSet<BuildProfile> _selectedProfiles = new();
@@ -113,18 +113,8 @@ namespace BuildTool.Editor
 
         private void LoadStyleSheet(VisualElement root)
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
-            if (styleSheet == null)
-            {
-                var guids = AssetDatabase.FindAssets("BuildWindow t:StyleSheet");
-                if (guids.Length > 0)
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
-                }
-            }
-
-            if (styleSheet != null)
+            var styleSheet = PackagePathHelper.LoadStyleSheet("Editor/Core/BuildWindow.uss", "BuildWindow");
+            if (styleSheet != null && !root.styleSheets.Contains(styleSheet))
             {
                 root.styleSheets.Add(styleSheet);
             }
@@ -744,7 +734,7 @@ namespace BuildTool.Editor
         private static class TextContent
         {
             public const string WindowTitle = "Build Tool";
-            public const string MenuItem = "Tools/Build/Show Build Window %#&b";
+            public const string MenuItem = "Tools/Build Tool/Show Build Window %#&b";
 
             public const string HeaderOptions = "Build Options";
             public const string HintOptions = "General build flags, version tracking, and output behaviors.";

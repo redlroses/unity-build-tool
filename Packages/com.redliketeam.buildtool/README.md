@@ -1,5 +1,8 @@
 # Unity Build Tool
 
+> ⚠️ **Requires Unity 6 (6000.0.0f1) or higher.**  
+> Built natively to leverage the Unity 6 Build Profiles system (`UnityEditor.Build.Profile`).
+
 An automation and pipeline orchestration tool for Unity that configures, executes, and tracks sequential multi-platform builds with custom pre/post-processing extensions, notifications, and CI/CD CLI support.
 
 ![Build Tool Interface](Images/interface-preview.png)
@@ -21,20 +24,24 @@ An automation and pipeline orchestration tool for Unity that configures, execute
 
 ## Installation
 
-### Via Unity Package Manager (Git URL)
+### Via Unity Asset Store
+1. Open Unity and navigate to **Window → Package Manager**.
+2. Select **Packages: My Assets** from the dropdown menu.
+3. Locate **Build Tool** and click **Download**, then **Install**.
 
+### Via Unity Package Manager (Git URL)
 1. In Unity, open **Window → Package Manager**.
 2. Click **+** → **Add package from git URL...**
 3. Paste:
    ```text
-   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.buildtool#v1.0.0
+   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.0
    ```
 
 Alternatively, add it directly to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.buildtool#v1.0.0"
+    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.0"
   }
 }
 ```
@@ -45,7 +52,7 @@ Alternatively, add it directly to your `Packages/manifest.json`:
 
 ### 1. Build Window
 
-Open the window from the top menu: **Tools → Build → Show Build Window** (Shortcut: `Ctrl + Shift + Alt + B`).
+Open the window from the top menu: **Tools → Build Tool → Show Build Window** (Shortcut: `Ctrl + Shift + Alt + B`).
 
 1. **Select Profiles**: Check the `BuildProfile` assets you wish to build sequentially. Use **All** / **None** for quick selection, and the **Switch** button next to any profile to activate it in the editor immediately.
 2. **Build Options**:
@@ -66,7 +73,7 @@ Open the window from the top menu: **Tools → Build → Show Build Window** (Sh
 
 ### 2. Setup Wizard
 
-Open **Tools → Build → Setup Wizard** to configure optional modules without editing code or assembly definitions:
+Open **Tools → Build Tool → Setup Wizard** to configure optional modules without editing code or assembly definitions:
 - **Build Notifications**: Master toggle and notification channel status.
 - **Experimental CLI**: Enable `com.unity.pipeline` native commands (`BUILDTOOL_CLI_EXPERIMENTAL`). Installs `com.unity.pipeline` via UPM if missing.
 - **Git Build Tracking**: Enable version indexing and repository tracking (`BUILDTOOL_TRACKING`).
@@ -74,7 +81,7 @@ Open **Tools → Build → Setup Wizard** to configure optional modules without 
 
 ### 3. Welcome Screen
 
-Open **Window → Build Tool → Welcome Screen** for a guided overview, quick access to settings and wizards, interactive readiness checklist, release notes, and reference samples.
+Open **Tools → Build Tool → Welcome Screen** (or **Window → Build Tool → Welcome Screen**) for a guided overview, quick access to settings and wizards, interactive readiness checklist, release notes, and reference samples.
 
 ---
 
@@ -459,4 +466,5 @@ public class BuildInfoWatermark : MonoBehaviour
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+When acquired through the Unity Asset Store, this package is subject to the [Unity Asset Store End User License Agreement (EULA)](https://unity.com/legal/as-terms).  
+The open-source repository on GitHub is licensed under the MIT License.
