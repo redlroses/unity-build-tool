@@ -47,7 +47,9 @@ namespace BuildTool.Editor.Notifications.Channels
                 BuildNotificationSettings.ClearTelegramToken,
                 "TELEGRAM_BOT_TOKEN",
                 "Enter bot token provided by @BotFather.",
-                null
+                null,
+                isUrl: false,
+                hasExplicitVal: () => BuildNotificationSettings.HasExplicitTelegramToken
             ));
 
             var recipientsTitle = new Label("Recipients (Chat IDs)");
@@ -191,8 +193,8 @@ namespace BuildTool.Editor.Notifications.Channels
 
             var message =
                 $"🔔 <b>Build Tool Test</b>\n" +
-                $"Project: <code>{Application.productName}</code>\n" +
-                $"Machine: <code>{Environment.MachineName}</code>\n" +
+                $"Project: <code>{HtmlEncode(Application.productName)}</code>\n" +
+                $"Machine: <code>{HtmlEncode(Environment.MachineName)}</code>\n" +
                 "Status: Telegram bot integration is operational! 🎉";
             var allOk = true;
 

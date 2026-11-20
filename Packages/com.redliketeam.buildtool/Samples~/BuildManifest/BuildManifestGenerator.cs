@@ -49,6 +49,14 @@ namespace BuildTool.Editor.Processors
         private bool _includeProfile = true;
         private bool _includeEnv = true;
         private bool _logOnBuild = true;
+        private bool? _isEnabledOverride;
+        private bool _hasCliBackupOverride;
+
+        public override bool IsEnabled
+        {
+            get => _isEnabledOverride ?? base.IsEnabled;
+            set => base.IsEnabled = value;
+        }
 
         private Stopwatch _profileStopwatch;
 
@@ -88,8 +96,8 @@ namespace BuildTool.Editor.Processors
             var enabledArg = context.Request.GetExtensionArg("manifest");
             if (!string.IsNullOrWhiteSpace(enabledArg))
             {
-                IsEnabled = !enabledArg.Equals("false", StringComparison.OrdinalIgnoreCase) &&
-                            !enabledArg.Equals("0");
+                _isEnabledOverride = !enabledArg.Equals("false", StringComparison.OrdinalIgnoreCase) &&
+                                     !enabledArg.Equals("0");
             }
 
             var formatArg = context.Request.GetExtensionArg("manifest.format");
@@ -108,6 +116,7 @@ namespace BuildTool.Editor.Processors
             if (!string.IsNullOrWhiteSpace(backupArg))
             {
                 _backupDir = backupArg.Trim();
+                _hasCliBackupOverride = true;
             }
         }
 
@@ -275,7 +284,14 @@ namespace BuildTool.Editor.Processors
                     }
                 }
 
-                var model = BuildModel(profile, duration);
+                var effectiveIncludeGit = GetBool(KeyIncludeGit, _includeGit);
+                var effectiveIncludeProfile = GetBool(KeyIncludeProfile, _includeProfile);
+                var effectiveIncludeEnv = GetBool(KeyIncludeEnv, _includeEnv);
+                var effectiveLogOnBuild = GetBool(KeyLogOnBuild, _logOnBuild);
+                var effectiveBackupDir = _hasCliBackupOverride ? _backupDir : GetString(KeyBackupDir, _backupDir);
+                var effectiveRetentionCount = GetInt(KeyRetentionCount, _retentionCount);
+
+                var model = BuildModel(profile, duration, effectiveIncludeGit, effectiveIncludeProfile, effectiveIncludeEnv);
                 var content = FormatManifest(model, _format);
 
                 var filename = string.IsNullOrWhiteSpace(_filename) ? "build-manifest.json" : _filename;
@@ -284,26 +300,28 @@ namespace BuildTool.Editor.Processors
                 File.WriteAllText(outputPath, content);
                 Debug.Log($"<color=#76D275><b>[BuildManifest]</b></color> Manifest saved to: {outputPath}");
 
-                if (_logOnBuild)
+                if (effectiveLogOnBuild)
                 {
                     Debug.Log($"<b>[BuildManifest Contents]</b>\n{content}");
                 }
 
-                if (!string.IsNullOrWhiteSpace(_backupDir))
+                if (!string.IsNullOrWhiteSpace(effectiveBackupDir))
                 {
                     try
                     {
-                        if (!Directory.Exists(_backupDir))
+                        if (!Directory.Exists(effectiveBackupDir))
                         {
-                            Directory.CreateDirectory(_backupDir);
+                            Directory.CreateDirectory(effectiveBackupDir);
                         }
 
-                        var backupFilename =
-                            $"{Path.GetFileNameWithoutExtension(filename)}_{DateTime.UtcNow:yyyyMMdd_HHmmss}" +
-                            $"{Path.GetExtension(filename)}";
-                        var backupPath = Path.Combine(_backupDir, backupFilename);
+                        var baseName = Path.GetFileNameWithoutExtension(filename);
+                        var ext = Path.GetExtension(filename);
+                        var backupFilename = $"{baseName}_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}{ext}";
+                        var backupPath = Path.Combine(effectiveBackupDir, backupFilename);
                         File.Copy(outputPath, backupPath, true);
                         Debug.Log($"<color=#76D275><b>[BuildManifest]</b></color> Backup copied to: {backupPath}");
+
+                        PruneOldBackups(effectiveBackupDir, baseName, ext, effectiveRetentionCount);
                     }
                     catch (Exception ex)
                     {
@@ -317,7 +335,48 @@ namespace BuildTool.Editor.Processors
             }
         }
 
+        private static void PruneOldBackups(string backupDir, string baseName, string ext, int retentionCount)
+        {
+            if (retentionCount <= 0 || !Directory.Exists(backupDir))
+            {
+                return;
+            }
+
+            var files = Directory.GetFiles(backupDir, $"{baseName}_*{ext}");
+            if (files.Length <= retentionCount)
+            {
+                return;
+            }
+
+            Array.Sort(files, (a, b) => File.GetLastWriteTimeUtc(b).CompareTo(File.GetLastWriteTimeUtc(a)));
+            for (var i = retentionCount; i < files.Length; i++)
+            {
+                try
+                {
+                    File.Delete(files[i]);
+                }
+                catch
+                {
+                }
+            }
+        }
+
         private ManifestModel BuildModel(BuildProfile profile, double durationSeconds)
+        {
+            return BuildModel(
+                profile,
+                durationSeconds,
+                GetBool(KeyIncludeGit, _includeGit),
+                GetBool(KeyIncludeProfile, _includeProfile),
+                GetBool(KeyIncludeEnv, _includeEnv));
+        }
+
+        private static ManifestModel BuildModel(
+            BuildProfile profile,
+            double durationSeconds,
+            bool includeGit,
+            bool includeProfile,
+            bool includeEnv)
         {
             var model = new ManifestModel
             {
@@ -325,20 +384,20 @@ namespace BuildTool.Editor.Processors
                 BuildDurationSeconds = Math.Round(durationSeconds, 2)
             };
 
-            if (_includeProfile)
+            if (includeProfile)
             {
                 model.ProfileName = profile != null ? profile.name : "SampleProfile";
                 model.TargetPlatform = BuildTool.GetBuildTarget(profile).ToString();
             }
 
-            if (_includeEnv)
+            if (includeEnv)
             {
                 model.UnityVersion = Application.unityVersion;
                 model.MachineName = Environment.MachineName;
                 model.OperatingSystem = SystemInfo.operatingSystem;
             }
 
-            if (_includeGit)
+            if (includeGit)
             {
                 model.GitBranch = RunGit("rev-parse --abbrev-ref HEAD");
                 model.GitCommit = RunGit("rev-parse --short HEAD");
@@ -349,7 +408,8 @@ namespace BuildTool.Editor.Processors
 
         private static string FormatManifest(ManifestModel model, string format)
         {
-            return format switch
+            var normalizedFormat = (format ?? string.Empty).Trim().ToUpperInvariant();
+            return normalizedFormat switch
             {
                 "YAML" => $"# Build Manifest\n" +
                           $"build_time_utc: \"{model.BuildTimeUtc}\"\n" +
@@ -362,17 +422,17 @@ namespace BuildTool.Editor.Processors
                           $"machine: \"{model.MachineName}\"\n" +
                           $"os: \"{model.OperatingSystem}\"\n",
 
-                "Plain Text" => $"BUILD MANIFEST\n" +
-                                $"==============\n" +
-                                $"Time (UTC):  {model.BuildTimeUtc}\n" +
-                                $"Duration:    {model.BuildDurationSeconds.ToString(CultureInfo.InvariantCulture)}s\n" +
-                                $"Profile:     {model.ProfileName}\n" +
-                                $"Platform:    {model.TargetPlatform}\n" +
-                                $"Unity:       {model.UnityVersion}\n" +
-                                $"Git Branch:  {model.GitBranch}\n" +
-                                $"Git Commit:  {model.GitCommit}\n" +
-                                $"Machine:     {model.MachineName}\n" +
-                                $"OS:          {model.OperatingSystem}\n",
+                "TEXT" or "PLAIN TEXT" => $"BUILD MANIFEST\n" +
+                                          $"==============\n" +
+                                          $"Time (UTC):  {model.BuildTimeUtc}\n" +
+                                          $"Duration:    {model.BuildDurationSeconds.ToString(CultureInfo.InvariantCulture)}s\n" +
+                                          $"Profile:     {model.ProfileName}\n" +
+                                          $"Platform:    {model.TargetPlatform}\n" +
+                                          $"Unity:       {model.UnityVersion}\n" +
+                                          $"Git Branch:  {model.GitBranch}\n" +
+                                          $"Git Commit:  {model.GitCommit}\n" +
+                                          $"Machine:     {model.MachineName}\n" +
+                                          $"OS:          {model.OperatingSystem}\n",
 
                 _ => JsonUtility.ToJson(model, true)
             };

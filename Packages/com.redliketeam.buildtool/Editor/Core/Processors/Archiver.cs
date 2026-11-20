@@ -32,6 +32,14 @@ namespace BuildTool.Editor.Processors
 
         private bool _isAll;
         private string _excludePatterns;
+        private bool? _isEnabledOverride;
+        private BuildContext _context;
+
+        public override bool IsEnabled
+        {
+            get => _isEnabledOverride ?? base.IsEnabled;
+            set => base.IsEnabled = value;
+        }
 
         internal string ExcludePatterns => _excludePatterns;
         internal bool IsAll => _isAll;
@@ -59,6 +67,7 @@ namespace BuildTool.Editor.Processors
 
         public void Initialize(BuildContext context)
         {
+            _context = context;
             if (context?.Request?.ExtensionArgs == null)
             {
                 return;
@@ -85,11 +94,11 @@ namespace BuildTool.Editor.Processors
                 trimmed.Equals("none", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Equals("off", StringComparison.OrdinalIgnoreCase))
             {
-                IsEnabled = false;
+                _isEnabledOverride = false;
                 return;
             }
 
-            IsEnabled = true;
+            _isEnabledOverride = true;
 
             if (trimmed.Equals("all", StringComparison.OrdinalIgnoreCase))
             {
@@ -159,7 +168,7 @@ namespace BuildTool.Editor.Processors
 
         public void PostProcess(BuildProfile profile, string path)
         {
-            var contains = _profilesToArchive.GetValueOrDefault(profile.name, false);
+            var contains = profile != null && _profilesToArchive.GetValueOrDefault(profile.name, false);
 
             if (!IsEnabled || (!_isAll && !contains))
             {
@@ -168,11 +177,29 @@ namespace BuildTool.Editor.Processors
 
             if (string.IsNullOrEmpty(path))
             {
-                Debug.LogError($"Archiver error. Path for build is null or empty. Profile {profile.name}");
+                Debug.LogError($"Archiver error. Path for build is null or empty. Profile {profile?.name}");
                 return;
             }
 
-            ArchiveFolder(path, string.Format(ArchiveNameFormat, Path.GetFileName(path)), _excludePatterns);
+            var archiveBaseName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (_context != null && !string.IsNullOrWhiteSpace(_context.RootBuildPath))
+            {
+                var normPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var normRoot = Path.GetFullPath(_context.RootBuildPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (string.Equals(normPath, normRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    var safeProfile = BuildReportFormatter.GetSafeProfileName(profile);
+                    Debug.LogWarning(
+                        $"[Archiver] Build output directory for profile '{safeProfile}' matches root build folder '{normRoot}'. " +
+                        "Consider using a profile-specific subfolder pattern to avoid archiving sibling builds.");
+                    if (!string.IsNullOrEmpty(safeProfile))
+                    {
+                        archiveBaseName = safeProfile;
+                    }
+                }
+            }
+
+            ArchiveFolder(path, string.Format(ArchiveNameFormat, archiveBaseName), _excludePatterns);
         }
 
         public override VisualElement CreateBodyGUI(IEnumerable<BuildProfile> profiles)
@@ -295,19 +322,23 @@ namespace BuildTool.Editor.Processors
 
         private static void CompressDirectory(string sourceDir, string zipFilePath, string[] patterns)
         {
+            var fullZipPath = Path.GetFullPath(zipFilePath);
             using var archive = ZipFile.Open(zipFilePath, ZipArchiveMode.Create);
             var rootDir = new DirectoryInfo(sourceDir);
-            AddDirectoryToArchive(archive, rootDir, rootDir.FullName, patterns);
+            AddDirectoryToArchive(archive, rootDir, rootDir.FullName, patterns, fullZipPath);
         }
 
         private static void AddDirectoryToArchive(
             ZipArchive archive,
             DirectoryInfo currentDir,
             string rootPath,
-            string[] patterns)
+            string[] patterns,
+            string fullZipPath)
         {
             var directories = currentDir.GetDirectories();
-            var files = currentDir.GetFiles();
+            var files = currentDir.GetFiles()
+                .Where(f => !string.Equals(Path.GetFullPath(f.FullName), fullZipPath, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
 
             var nonExcludedDirs = patterns.Length > 0
                 ? directories.Where(dir => !ShouldExclude(dir.Name, patterns)).ToArray()
@@ -329,7 +360,7 @@ namespace BuildTool.Editor.Processors
 
             foreach (var dir in nonExcludedDirs)
             {
-                AddDirectoryToArchive(archive, dir, rootPath, patterns);
+                AddDirectoryToArchive(archive, dir, rootPath, patterns, fullZipPath);
             }
         }
 

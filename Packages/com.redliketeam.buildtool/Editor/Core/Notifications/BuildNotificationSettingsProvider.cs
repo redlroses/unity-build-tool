@@ -49,12 +49,33 @@ namespace BuildTool.Editor.Notifications
             subtitle.AddToClassList("notif-page-subtitle");
             scroll.Add(subtitle);
 
-            var masterToggle = new Toggle("Enable Build Notifications")
+            var generalCard = new VisualElement();
+            generalCard.AddToClassList("notif-channel-card");
+            generalCard.AddToClassList("notif-general-card");
+            scroll.Add(generalCard);
+
+            var masterRow = CreateSettingRow(
+                "Enable Build Notifications",
+                "Send build status alerts to enabled channels below.",
+                BuildNotificationSettings.MasterEnabled,
+                out var masterToggle);
+            generalCard.Add(masterRow);
+
+            var divider = new VisualElement();
+            divider.AddToClassList("notif-setting-divider");
+            generalCard.Add(divider);
+
+            var perProfileRow = CreateSettingRow(
+                "Notify After Each Profile",
+                "When disabled, notifications are only sent once as a batch summary when the entire sequence finishes.",
+                BuildNotificationSettings.NotifyPerProfile,
+                out var perProfileToggle);
+            perProfileRow.SetEnabled(BuildNotificationSettings.MasterEnabled);
+            perProfileToggle.RegisterValueChangedCallback(evt =>
             {
-                value = BuildNotificationSettings.MasterEnabled
-            };
-            masterToggle.AddToClassList("notif-header-toggle");
-            scroll.Add(masterToggle);
+                BuildNotificationSettings.NotifyPerProfile = evt.newValue;
+            });
+            generalCard.Add(perProfileRow);
 
             var contentContainer = new VisualElement();
             contentContainer.SetEnabled(BuildNotificationSettings.MasterEnabled);
@@ -63,21 +84,9 @@ namespace BuildTool.Editor.Notifications
             masterToggle.RegisterValueChangedCallback(evt =>
             {
                 BuildNotificationSettings.MasterEnabled = evt.newValue;
+                perProfileRow.SetEnabled(evt.newValue);
                 contentContainer.SetEnabled(evt.newValue);
             });
-
-            var perProfileToggle = new Toggle("Notify After Each Profile")
-            {
-                value = BuildNotificationSettings.NotifyPerProfile,
-                tooltip = "When disabled, notifications are only sent once as a batch summary " +
-                    "when the entire sequence finishes."
-            };
-            perProfileToggle.AddToClassList("notif-header-toggle");
-            perProfileToggle.RegisterValueChangedCallback(evt =>
-            {
-                BuildNotificationSettings.NotifyPerProfile = evt.newValue;
-            });
-            contentContainer.Add(perProfileToggle);
 
             var channels = BuildNotificationManager.Channels;
 
@@ -97,6 +106,69 @@ namespace BuildTool.Editor.Notifications
                         $"Error loading settings for '{channel.DisplayName}': {ex.Message}",
                         HelpBoxMessageType.Error));
                 }
+            }
+        }
+
+        private static VisualElement CreateSettingRow(
+            string title,
+            string description,
+            bool initialValue,
+            out Toggle toggle)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("notif-setting-row");
+
+            var textCol = new VisualElement();
+            textCol.AddToClassList("notif-setting-text");
+
+            var titleLabel = new Label(title);
+            titleLabel.AddToClassList("notif-setting-title");
+            textCol.Add(titleLabel);
+
+            if (!string.IsNullOrEmpty(description))
+            {
+                var descLabel = new Label(description);
+                descLabel.AddToClassList("notif-setting-desc");
+                textCol.Add(descLabel);
+            }
+
+            var switchToggle = new Toggle { value = initialValue };
+            ApplySwitchStyle(switchToggle);
+            row.Add(switchToggle);
+
+            row.Add(textCol);
+
+            row.RegisterCallback<ClickEvent>(evt =>
+            {
+                if (evt.target == switchToggle || switchToggle.Contains(evt.target as VisualElement))
+                {
+                    return;
+                }
+                if (row.enabledInHierarchy)
+                {
+                    switchToggle.value = !switchToggle.value;
+                }
+            });
+
+            toggle = switchToggle;
+            return row;
+        }
+
+        internal static void ApplySwitchStyle(Toggle toggle)
+        {
+            if (toggle == null)
+            {
+                return;
+            }
+
+            toggle.AddToClassList("notif-switch");
+            var checkmark = toggle.Q(className: Toggle.checkmarkUssClassName);
+            if (checkmark != null && checkmark.Q(className: "notif-switch-knob") == null)
+            {
+                var knob = new VisualElement();
+                knob.AddToClassList("notif-switch-knob");
+                knob.pickingMode = PickingMode.Ignore;
+                checkmark.Add(knob);
             }
         }
 

@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using BuildTool.Editor.DirectoryBuilders;
 using BuildTool.Editor.Pipeline;
 using BuildTool.Editor.Processors;
 using BuildTool.Tracking;
@@ -34,6 +36,8 @@ namespace BuildTool.Editor
 #if BUILDTOOL_TRACKING
         public static bool IsTrackingEnabled => true;
 
+        internal static bool? ActiveRunRegisterOverride { get; set; }
+
         public static string GetCurrentBuildIndex(string buildIndexOverride = null)
         {
             if (buildIndexOverride != null)
@@ -41,16 +45,16 @@ namespace BuildTool.Editor
                 return buildIndexOverride;
             }
 
-            if (!IsRegisterVersionEnabled)
+            var activeBuildInfo = BuildTracker.BuildInfo;
+            if (activeBuildInfo != null && !string.IsNullOrEmpty(activeBuildInfo.Index))
             {
-                return BuildTracker.LocalBuildIndex;
+                return activeBuildInfo.Index;
             }
 
-            if (BuildTracker.BuildInfo != null &&
-                !string.IsNullOrEmpty(BuildTracker.BuildInfo.Index) &&
-                BuildTracker.BuildInfo.Index != BuildTracker.LocalBuildIndex)
+            var isRegisterEnabled = ActiveRunRegisterOverride ?? IsRegisterVersionEnabled;
+            if (!isRegisterEnabled)
             {
-                return BuildTracker.BuildInfo.Index;
+                return BuildTracker.LocalBuildIndex;
             }
 
             try
@@ -68,8 +72,29 @@ namespace BuildTool.Editor
             return "1";
         }
 #else
+        internal static bool? ActiveRunRegisterOverride { get; set; }
         public static bool IsTrackingEnabled => false;
 #endif
+
+        private static string SanitizeRootSegment(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+            {
+                return string.Empty;
+            }
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var chars = input.ToCharArray();
+            for (var i = 0; i < chars.Length; i++)
+            {
+                if (Array.IndexOf(invalidChars, chars[i]) >= 0)
+                {
+                    chars[i] = '_';
+                }
+            }
+
+            return new string(chars).Replace("..", "__");
+        }
 
         public static string GetRootBuildPath(string buildIndex = null, DateTime? date = null)
         {
@@ -78,7 +103,10 @@ namespace BuildTool.Editor
                 ? DefaultRootFolderPattern
                 : settings.RootFolderPattern;
 
-            var version = Application.version;
+            var version = SanitizeRootSegment(GetGlobalAppVersion());
+            var productName = SanitizeRootSegment(PlayerSettings.productName ?? "");
+            var companyName = SanitizeRootSegment(PlayerSettings.companyName ?? "");
+            var bundleId = SanitizeRootSegment(Application.identifier ?? "");
             var now = date ?? DateTime.Now;
 
             var result = pattern;
@@ -86,21 +114,23 @@ namespace BuildTool.Editor
             result = Regex.Replace(result, @"\{AppVersion\}|\{Version\}", version, RegexOptions.IgnoreCase);
 
 #if BUILDTOOL_TRACKING
-            var index = GetCurrentBuildIndex(buildIndex);
+            var index = SanitizeRootSegment(GetCurrentBuildIndex(buildIndex));
             result = Regex.Replace(result, @"\{BuildIndex\}", index, RegexOptions.IgnoreCase);
 #else
             if (!string.IsNullOrEmpty(buildIndex))
             {
-                result = Regex.Replace(result, @"\{BuildIndex\}", buildIndex, RegexOptions.IgnoreCase);
+                result = Regex.Replace(
+                    result, @"\{BuildIndex\}", SanitizeRootSegment(buildIndex), RegexOptions.IgnoreCase);
             }
             else
             {
                 result = Regex.Replace(result, @"[._-]?\{BuildIndex\}", "", RegexOptions.IgnoreCase);
             }
 #endif
-            result = Regex.Replace(
-                result, @"\{ProductName\}", PlayerSettings.productName ?? "", RegexOptions.IgnoreCase);
-            result = Regex.Replace(result, @"\{Time\}", now.ToString("HH-mm-ss"), RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\{ProductName\}", productName, RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\{CompanyName\}|\{Company\}", companyName, RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\{BundleId\}|\{ApplicationId\}", bundleId, RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\{Time\}", SanitizeRootSegment(now.ToString("HH-mm-ss")), RegexOptions.IgnoreCase);
 
             result = Regex.Replace(result, @"\{Date(?::([^}]+))?\}", match =>
             {
@@ -108,7 +138,7 @@ namespace BuildTool.Editor
                     ? match.Groups[1].Value
                     : "yyyy-MM-dd";
 
-                return now.ToString(format);
+                return SanitizeRootSegment(now.ToString(format));
             }, RegexOptions.IgnoreCase);
 
             result = result.Trim().TrimStart('/', '\\').TrimEnd('/', '\\');
@@ -131,6 +161,7 @@ namespace BuildTool.Editor
 #endif
 
         public static event Action<BuildReport, BuildInfo> BuildFinished;
+        internal static event Action<BuildReport, BuildInfo, BuildProfile> BuildFinishedWithProfile;
 
         /// <summary>
         ///     Service used to execute build player operations. Defaults to <see cref="UnityBuildPipelineService" />.
@@ -179,9 +210,7 @@ namespace BuildTool.Editor
 
             if (result != null && result.Success && postprocessors != null)
             {
-                var targetDirectory = Directory.Exists(path)
-                    ? path
-                    : Path.GetDirectoryName(path);
+                var targetDirectory = ResolveOutputDirectory(path);
 
                 foreach (var postprocess in postprocessors)
                 {
@@ -190,6 +219,25 @@ namespace BuildTool.Editor
             }
 
             return result;
+        }
+
+        internal static string ResolveOutputDirectory(string outputPath)
+        {
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                return outputPath;
+            }
+
+            var trimmed = outputPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var isAppBundle = trimmed.EndsWith(".app", StringComparison.OrdinalIgnoreCase);
+
+            if (!isAppBundle && Directory.Exists(trimmed))
+            {
+                return trimmed;
+            }
+
+            var parent = Path.GetDirectoryName(trimmed);
+            return !string.IsNullOrEmpty(parent) ? parent : trimmed;
         }
 
         /// <summary>
@@ -449,6 +497,8 @@ namespace BuildTool.Editor
                                 }
                             }
                         }
+
+                        return GetGlobalAppVersion();
                     }
                 }
 
@@ -474,6 +524,8 @@ namespace BuildTool.Editor
                             }
                         }
                     }
+
+                    return GetGlobalAppVersion();
                 }
 
                 var assetPath = AssetDatabase.GetAssetPath(profile);
@@ -481,7 +533,8 @@ namespace BuildTool.Editor
                 {
                     var content = File.ReadAllText(assetPath);
                     var yamlSectionMatch = Regex.Match(
-                        content, @"m_PlayerSettingsYaml:\s*([\s\S]*?)(?:[a-zA-Z0-9_]+:|$)", RegexOptions.IgnoreCase);
+                        content, @"m_PlayerSettingsYaml:\s*([\s\S]*?)(?:\r?\n[a-zA-Z0-9_]+:|$)",
+                        RegexOptions.IgnoreCase);
                     var searchArea = yamlSectionMatch.Success ? yamlSectionMatch.Groups[1].Value : content;
                     var match = Regex.Match(searchArea, BundleVersionPattern, RegexOptions.IgnoreCase);
                     if (match.Success)
@@ -529,41 +582,50 @@ namespace BuildTool.Editor
         {
             if (PipelineService != null && !(PipelineService is UnityBuildPipelineService))
             {
-                var mockResult = PipelineService.BuildPlayer(options, profile);
-#if BUILDTOOL_TRACKING
-                BuildFinished?.Invoke(mockResult?.Report, BuildTracker.BuildInfo);
-#else
-                BuildFinished?.Invoke(mockResult?.Report, null);
-#endif
-                LogBuildReport(mockResult?.Report, profile);
-                return Task.FromResult(mockResult);
+                return Task.FromResult(ExecuteBuildPlayerCore(options, profile));
+            }
+
+            var syncContext = SynchronizationContext.Current;
+            if (Application.isBatchMode || syncContext == null)
+            {
+                return Task.FromResult(ExecuteBuildPlayerCore(options, profile));
             }
 
             var tcs = new TaskCompletionSource<BuildPlayerResult>();
 
-            EditorApplication.delayCall += () =>
+            syncContext.Post(_ =>
             {
                 try
                 {
-                    var service = PipelineService ?? new UnityBuildPipelineService();
-                    var buildResult = service.BuildPlayer(options, profile);
-
-#if BUILDTOOL_TRACKING
-                    BuildFinished?.Invoke(buildResult?.Report, BuildTracker.BuildInfo);
-#else
-                    BuildFinished?.Invoke(buildResult?.Report, null);
-#endif
-
-                    LogBuildReport(buildResult?.Report, profile);
+                    var buildResult = ExecuteBuildPlayerCore(options, profile);
                     tcs.SetResult(buildResult);
                 }
                 catch (Exception ex)
                 {
                     tcs.SetException(ex);
                 }
-            };
+            }, null);
 
             return tcs.Task;
+        }
+
+        private static BuildPlayerResult ExecuteBuildPlayerCore(
+            BuildPlayerWithProfileOptions options,
+            BuildProfile profile)
+        {
+            var service = PipelineService ?? new UnityBuildPipelineService();
+            var buildResult = service.BuildPlayer(options, profile);
+
+#if BUILDTOOL_TRACKING
+            var buildInfo = BuildTracker.BuildInfo;
+#else
+            BuildInfo buildInfo = null;
+#endif
+            BuildFinished?.Invoke(buildResult?.Report, buildInfo);
+            BuildFinishedWithProfile?.Invoke(buildResult?.Report, buildInfo, profile);
+
+            LogBuildReport(buildResult?.Report, profile);
+            return buildResult;
         }
 
         private static void LogBuildReport(BuildReport buildReport, BuildProfile profile = null)

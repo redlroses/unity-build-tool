@@ -74,6 +74,11 @@ namespace BuildTool.Editor
 
         private void OnFocus()
         {
+            if (_isBuildInProcess)
+            {
+                return;
+            }
+
             LoadAllProfiles();
             LoadSettings();
             BuildUI();
@@ -120,6 +125,34 @@ namespace BuildTool.Editor
             }
         }
 
+        private static Button CreateQuickIconButton(Action onClick, string tooltip, Texture icon, string fallbackText)
+        {
+            var button = new Button(onClick)
+            {
+                tooltip = tooltip
+            };
+            button.AddToClassList("build-quick-btn");
+            button.AddToClassList("build-quick-icon-btn");
+
+            if (icon != null)
+            {
+                var iconImg = new Image
+                {
+                    image = icon,
+                    scaleMode = ScaleMode.ScaleToFit,
+                    pickingMode = PickingMode.Ignore
+                };
+                iconImg.AddToClassList("build-quick-btn-icon");
+                button.Add(iconImg);
+            }
+            else
+            {
+                button.text = fallbackText;
+            }
+
+            return button;
+        }
+
         private void BuildProfilesCard(VisualElement container)
         {
             var card = new VisualElement();
@@ -137,32 +170,23 @@ namespace BuildTool.Editor
             var quickActions = new VisualElement();
             quickActions.AddToClassList("build-quick-actions");
 
-            var settingsBtn = new Button(() => SettingsService.OpenProjectSettings("Project/Build Tool"))
-            {
-                tooltip = "Open Build Tool Project Settings"
-            };
-            settingsBtn.AddToClassList("build-quick-btn");
-            settingsBtn.AddToClassList("build-quick-icon-btn");
+            var wizardIcon = EditorGUIUtility.IconContent("d_CustomTool")?.image
+                ?? EditorGUIUtility.IconContent("CustomTool")?.image
+                ?? EditorGUIUtility.FindTexture("CustomTool");
+            var wizardBtn = CreateQuickIconButton(
+                BuildToolWizardWindow.ShowWindow,
+                "Setup Wizard",
+                wizardIcon,
+                "\u2692");
+            quickActions.Add(wizardBtn);
 
             var settingsIcon = EditorGUIUtility.IconContent("d_Settings")?.image
                 ?? EditorGUIUtility.FindTexture("Settings");
-
-            if (settingsIcon != null)
-            {
-                var iconImg = new Image
-                {
-                    image = settingsIcon,
-                    scaleMode = ScaleMode.ScaleToFit,
-                    pickingMode = PickingMode.Ignore
-                };
-                iconImg.AddToClassList("build-quick-btn-icon");
-                settingsBtn.Add(iconImg);
-            }
-            else
-            {
-                settingsBtn.text = "\u2699";
-            }
-
+            var settingsBtn = CreateQuickIconButton(
+                () => SettingsService.OpenProjectSettings("Project/Build Tool"),
+                "Open Build Tool Project Settings",
+                settingsIcon,
+                "\u2699");
             quickActions.Add(settingsBtn);
 
             var allBtn = new Button(() =>
@@ -461,7 +485,7 @@ namespace BuildTool.Editor
             clearBtn.AddToClassList("build-utility-btn");
             utilRow.Add(clearBtn);
 
-            var openAppBtn = new Button(() => Application.OpenURL(Application.persistentDataPath))
+            var openAppBtn = new Button(() => BuildPipelineRunner.OpenFolderInExplorer(Application.persistentDataPath))
             {
                 text = TextContent.BtnOpenAppData,
                 tooltip = TextContent.BtnOpenAppData
@@ -476,14 +500,6 @@ namespace BuildTool.Editor
             };
             openBuildBtn.AddToClassList("build-utility-btn");
             utilRow.Add(openBuildBtn);
-
-            var wizardBtn = new Button(BuildToolWizardWindow.ShowWindow)
-            {
-                text = "Setup Wizard",
-                tooltip = "Setup Wizard"
-            };
-            wizardBtn.AddToClassList("build-utility-btn");
-            utilRow.Add(wizardBtn);
 
             card.Add(utilRow);
 
@@ -616,24 +632,14 @@ namespace BuildTool.Editor
         {
             _extensions.Clear();
 
-            var types = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(assembly =>
-                {
-                    try
-                    {
-                        return assembly.GetTypes();
-                    }
-                    catch (ReflectionTypeLoadException e)
-                    {
-                        return e.Types.Where(t => t != null);
-                    }
-                })
-                .Where(t => t.IsClass && !t.IsAbstract && Attribute.IsDefined(t, typeof(BuildExtensionAttribute)))
+            var types = TypeCache.GetTypesWithAttribute<BuildExtensionAttribute>()
+                .Where(t => t.IsClass && !t.IsAbstract)
                 .Select(t => new
                 {
                     Type = t,
                     Attr = (BuildExtensionAttribute) Attribute.GetCustomAttribute(t, typeof(BuildExtensionAttribute))
                 })
+                .Where(x => x.Attr != null)
                 .OrderBy(x => x.Attr.Order);
 
             foreach (var item in types)

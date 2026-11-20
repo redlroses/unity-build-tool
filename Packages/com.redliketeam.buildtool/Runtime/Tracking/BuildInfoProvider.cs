@@ -16,11 +16,11 @@ namespace BuildTool.Tracking
         {
             get
             {
-                if (!s_IsLoaded)
+                if (!s_IsLoaded || s_BuildInfo == null)
                 {
                     lock (s_Lock)
                     {
-                        if (!s_IsLoaded)
+                        if (!s_IsLoaded || s_BuildInfo == null)
                         {
                             s_BuildInfo = LoadBuildInfo();
                             s_IsLoaded = true;

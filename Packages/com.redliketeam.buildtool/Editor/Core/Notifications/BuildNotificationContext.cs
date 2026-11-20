@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using BuildTool.Tracking;
 using UnityEditor;
+using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
@@ -31,11 +32,23 @@ namespace BuildTool.Editor.Notifications
         public DateTime Timestamp { get; }
 
         public BuildNotificationContext(BuildReport report, BuildInfo info)
+            : this(report, info, null)
+        {
+        }
+
+        public BuildNotificationContext(BuildReport report, BuildInfo info, BuildProfile profile)
         {
             Report = report;
             Info = info;
             ProjectName = Application.productName;
             Timestamp = DateTime.UtcNow;
+
+            var standaloneSubtarget = profile != null
+                ? BuildTool.GetStandaloneBuildSubtarget(profile)
+                : EditorUserBuildSettings.standaloneBuildSubtarget;
+            var appVersion = profile != null
+                ? BuildTool.GetProfileVersion(profile)
+                : BuildTool.GetGlobalAppVersion();
 
             if (report != null)
             {
@@ -46,8 +59,8 @@ namespace BuildTool.Editor.Notifications
                 TotalWarnings = report.summary.totalWarnings;
                 OutputPath = report.summary.outputPath;
 
-                var subTarget = EditorUserBuildSettings.standaloneBuildSubtarget != StandaloneBuildSubtarget.Player
-                    ? $" ({EditorUserBuildSettings.standaloneBuildSubtarget})"
+                var subTarget = standaloneSubtarget != StandaloneBuildSubtarget.Player
+                    ? $" ({standaloneSubtarget})"
                     : string.Empty;
                 TargetPlatform = $"{report.summary.platform}{subTarget}";
             }
@@ -59,15 +72,17 @@ namespace BuildTool.Editor.Notifications
                 TotalErrors = 0;
                 TotalWarnings = 0;
                 OutputPath = string.Empty;
-                TargetPlatform = EditorUserBuildSettings.activeBuildTarget.ToString();
+                TargetPlatform = profile != null
+                    ? BuildTool.GetBuildTarget(profile).ToString()
+                    : EditorUserBuildSettings.activeBuildTarget.ToString();
             }
 
             FormattedSize = FormatBytes(TotalSizeBytes);
             FormattedDuration = FormatDuration(Duration);
 
             VersionText = info != null && !string.IsNullOrEmpty(info.Index)
-                ? $"v{Application.version}.{info.Index}"
-                : $"v{Application.version}";
+                ? $"v{appVersion}.{info.Index}"
+                : $"v{appVersion}";
 
             CommitText = info != null && !string.IsNullOrEmpty(info.Commit)
                 ? info.Commit

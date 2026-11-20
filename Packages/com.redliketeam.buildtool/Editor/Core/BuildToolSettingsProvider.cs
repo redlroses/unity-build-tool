@@ -76,7 +76,7 @@ namespace BuildTool.Editor
             {
                 value = settings.RootFolderPattern,
                 tooltip = "Root directory pattern supporting tokens: " +
-                    "{Project}, {Company}, {Version}, {BuildIndex}, {Date}, {Platform}."
+                    "{ProductName}, {CompanyName}, {BundleId}, {Version}, {BuildIndex}, {Date}, {Time}."
             };
             patternField.AddToClassList("buildtool-field-flex");
             patternRow.Add(patternField);
@@ -390,6 +390,8 @@ namespace BuildTool.Editor
             tokens.Add(("{Date:yyyy-MM-dd_HH-mm}", "Date with time format"));
             tokens.Add(("{Time}", "Current time (HH-mm-ss)"));
             tokens.Add(("{ProductName}", "PlayerSettings.productName"));
+            tokens.Add(("{CompanyName}", "PlayerSettings.companyName"));
+            tokens.Add(("{BundleId}", "Application.identifier"));
 
             foreach (var (token, desc) in tokens)
             {

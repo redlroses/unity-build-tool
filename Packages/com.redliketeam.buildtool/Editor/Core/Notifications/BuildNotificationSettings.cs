@@ -147,11 +147,19 @@ namespace BuildTool.Editor.Notifications
                 var raw = EditorPrefs.GetString(s_WebhookEndpointKey);
                 if (!string.IsNullOrEmpty(raw))
                 {
-                    return raw;
+                    if (raw.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                        raw.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return raw;
+                    }
+
+                    var decoded = TryDecodeBase64(raw);
+                    return !string.IsNullOrEmpty(decoded) ? decoded : raw;
                 }
             }
 
-            var env = Environment.GetEnvironmentVariable("BUILD_WEBHOOK_URL");
+            var env = Environment.GetEnvironmentVariable("BUILD_WEBHOOK_URL")
+                ?? Environment.GetEnvironmentVariable("GENERIC_WEBHOOK_URL");
             return !string.IsNullOrWhiteSpace(env) ? env.Trim() : null;
         }
 
@@ -162,8 +170,12 @@ namespace BuildTool.Editor.Notifications
                 EditorPrefs.DeleteKey(s_WebhookEndpointKey);
                 return;
             }
-            EditorPrefs.SetString(s_WebhookEndpointKey, url.Trim());
+            EditorPrefs.SetString(s_WebhookEndpointKey, EncodeBase64(url.Trim()));
         }
+
+        public static bool HasExplicitGenericWebhook => EditorPrefs.HasKey(s_WebhookEndpointKey);
+
+        public static void ClearGenericWebhookUrl() => EditorPrefs.DeleteKey(s_WebhookEndpointKey);
 
         public static string GetGenericWebhookAuthHeader()
         {
@@ -177,7 +189,8 @@ namespace BuildTool.Editor.Notifications
                 }
             }
 
-            var env = Environment.GetEnvironmentVariable("BUILD_WEBHOOK_AUTH");
+            var env = Environment.GetEnvironmentVariable("BUILD_WEBHOOK_AUTH")
+                ?? Environment.GetEnvironmentVariable("GENERIC_WEBHOOK_AUTH");
             return !string.IsNullOrWhiteSpace(env) ? env.Trim() : null;
         }
 
@@ -190,6 +203,8 @@ namespace BuildTool.Editor.Notifications
             }
             EditorPrefs.SetString(s_WebhookAuthKey, EncodeBase64(authHeader.Trim()));
         }
+
+        public static bool HasExplicitGenericWebhookAuth => EditorPrefs.HasKey(s_WebhookAuthKey);
 
         public static void ClearGenericWebhook()
         {
@@ -274,7 +289,10 @@ namespace BuildTool.Editor.Notifications
             EditorPrefs.DeleteKey(s_LegacyTelegramTokenKey);
         }
 
-        public static List<string> GetTelegramChatIds()
+        public static bool HasExplicitTelegramChatIds =>
+            EditorPrefs.HasKey(s_TelegramChatIdsKey) || EditorPrefs.HasKey(s_LegacyTelegramChatIdsKey);
+
+        private static List<string> GetExplicitTelegramChatIds()
         {
             if (EditorPrefs.HasKey(s_TelegramChatIdsKey))
             {
@@ -304,6 +322,16 @@ namespace BuildTool.Editor.Notifications
                 return legacyList;
             }
 
+            return new List<string>();
+        }
+
+        public static List<string> GetTelegramChatIds()
+        {
+            if (HasExplicitTelegramChatIds)
+            {
+                return GetExplicitTelegramChatIds();
+            }
+
             var env = Environment.GetEnvironmentVariable("TELEGRAM_CHAT_ID")
                 ?? Environment.GetEnvironmentVariable("TELEGRAM_CHAT_IDS");
 
@@ -324,7 +352,7 @@ namespace BuildTool.Editor.Notifications
             {
                 return;
             }
-            var list = GetTelegramChatIds();
+            var list = GetExplicitTelegramChatIds();
             chatId = chatId.Trim();
             if (!list.Contains(chatId))
             {
@@ -335,7 +363,11 @@ namespace BuildTool.Editor.Notifications
 
         public static void RemoveTelegramChatId(string chatId)
         {
-            var list = GetTelegramChatIds();
+            if (string.IsNullOrWhiteSpace(chatId) || !HasExplicitTelegramChatIds)
+            {
+                return;
+            }
+            var list = GetExplicitTelegramChatIds();
             if (list.Remove(chatId.Trim()))
             {
                 EditorPrefs.SetString(s_TelegramChatIdsKey, string.Join(",", list));

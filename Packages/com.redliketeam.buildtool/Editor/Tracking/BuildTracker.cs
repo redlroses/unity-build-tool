@@ -213,9 +213,16 @@ namespace BuildTool.Tracking.Editor
 
         public static void DeleteBuildInfoAsset()
         {
+            s_OriginBuildInfo = null;
             if (File.Exists(BuildTrackingSettings.BuildInfoAssetPath))
             {
                 AssetDatabase.DeleteAsset(BuildTrackingSettings.BuildInfoAssetPath);
+                var dir = Path.GetDirectoryName(BuildTrackingSettings.BuildInfoAssetPath);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir) &&
+                    Directory.GetFileSystemEntries(dir).Length == 0)
+                {
+                    AssetDatabase.DeleteAsset(dir.Replace('\\', '/'));
+                }
             }
         }
 
@@ -371,7 +378,7 @@ namespace BuildTool.Tracking.Editor
 
                 await git.Init();
 
-                await git.SendCommand($"remote add remote-repo {repositoryUrl}",
+                await git.SendCommand($"remote add remote-repo \"{repositoryUrl}\"",
                     "Added remote repository",
                     "Failed to add remote repository");
 
@@ -420,7 +427,7 @@ namespace BuildTool.Tracking.Editor
                 GitRepository tempGit = new(BuildTrackingSettings.InitialRepositoryPath, s_Config.IsLogging);
                 await tempGit.Init();
 
-                await tempGit.SendCommand($"remote add remote-repo {repositoryUrl}",
+                await tempGit.SendCommand($"remote add remote-repo \"{repositoryUrl}\"",
                     "Added remote repository",
                     "Failed to add remote repository");
 
@@ -708,30 +715,137 @@ namespace BuildTool.Tracking.Editor
 
                 var reportsDir = Path.Combine(
                     BuildTrackingSettings.RepositoryPath, BuildTrackingSettings.ReportsDirectoryName);
-                if (!Directory.Exists(reportsDir))
-                {
-                    Directory.CreateDirectory(reportsDir);
-                }
 
-                var index = CurrentTrackedBuildIndex.ToString();
+                var index = OriginBuildInfo != null &&
+                            !string.IsNullOrEmpty(OriginBuildInfo.Index) &&
+                            OriginBuildInfo.Index != LocalBuildIndex
+                    ? OriginBuildInfo.Index
+                    : CurrentTrackedBuildIndex.ToString();
+
                 var filename = $"BuildReport_{index}.log";
                 var reportPath = Path.Combine(reportsDir, filename);
-
-                File.WriteAllText(reportPath, reportContent, System.Text.Encoding.UTF8);
-
                 var commitMessage = $"report: build {index}";
-                await trackingGit.Commit(commitMessage, "-A");
 
                 var hasOrigin = await trackingGit.HasOrigin();
-                if (hasOrigin)
+                var attempts = Math.Max(1, s_Config.PushRetryAttempts);
+                var delayMs = Math.Max(100, s_Config.PushRetryDelayMs);
+
+                Exception lastException = null;
+
+                for (var attempt = 1; attempt <= attempts; attempt++)
                 {
-                    await trackingGit.Push(trackingBranchName);
+                    try
+                    {
+                        if (attempt > 1 && hasOrigin)
+                        {
+                            await trackingGit.Fetch();
+                            if (s_Config.KeepSingleCommit)
+                            {
+                                await trackingGit.ResetToRemote(trackingBranchName);
+                            }
+                            else
+                            {
+                                await trackingGit.Pull(trackingBranchName);
+                            }
+                        }
+
+                        if (!Directory.Exists(reportsDir))
+                        {
+                            Directory.CreateDirectory(reportsDir);
+                        }
+
+                        AtomicWriteText(reportPath, reportContent);
+                        PruneOldBuildReports(reportsDir, s_Config.MaxHistoryEntries);
+
+                        if (s_Config.KeepSingleCommit)
+                        {
+                            await trackingGit.CommitSingleOrphan(trackingBranchName, commitMessage, "-A");
+                            await trackingGit.PushForceWithLease(trackingBranchName, isLocal: !hasOrigin);
+                        }
+                        else
+                        {
+                            await trackingGit.Commit(commitMessage, "-A");
+                            await trackingGit.Push(trackingBranchName, isLocal: !hasOrigin);
+                        }
+
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        if (attempt < attempts)
+                        {
+                            await Task.Delay(delayMs);
+                        }
+                    }
+                }
+
+                if (lastException != null)
+                {
+                    Debug.LogWarning(
+                        $"[BuildTracker] Failed to record build report to remote tracking branch after {attempts} attempts: " +
+                        $"{lastException.Message}");
                 }
             }
             catch (Exception ex)
             {
                 Debug.LogWarning(
                     $"[BuildTracker] Failed to record build report to remote tracking branch: {ex.Message}");
+            }
+        }
+
+        internal static void PruneOldBuildReports(string reportsDir, int maxEntries)
+        {
+            if (maxEntries <= 0 || string.IsNullOrEmpty(reportsDir) || !Directory.Exists(reportsDir))
+            {
+                return;
+            }
+
+            var files = Directory.GetFiles(reportsDir, "BuildReport_*.log");
+            if (files.Length <= maxEntries)
+            {
+                return;
+            }
+
+            var sorted = new List<(string Path, bool HasIndex, int Index, DateTime LastWriteUtc)>(files.Length);
+            foreach (var file in files)
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                var suffix = name.Length > "BuildReport_".Length ? name.Substring("BuildReport_".Length) : string.Empty;
+                var hasIndex = int.TryParse(suffix, out var parsedIndex);
+                sorted.Add((file, hasIndex, parsedIndex, File.GetLastWriteTimeUtc(file)));
+            }
+
+            sorted.Sort((a, b) =>
+            {
+                var hasCompare = a.HasIndex.CompareTo(b.HasIndex);
+                if (hasCompare != 0)
+                {
+                    return hasCompare;
+                }
+
+                if (a.HasIndex)
+                {
+                    var indexCompare = a.Index.CompareTo(b.Index);
+                    if (indexCompare != 0)
+                    {
+                        return indexCompare;
+                    }
+                }
+
+                return a.LastWriteUtc.CompareTo(b.LastWriteUtc);
+            });
+
+            var deleteCount = sorted.Count - maxEntries;
+            for (var i = 0; i < deleteCount; i++)
+            {
+                try
+                {
+                    File.Delete(sorted[i].Path);
+                }
+                catch
+                {
+                }
             }
         }
     }

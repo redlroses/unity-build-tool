@@ -93,7 +93,7 @@ namespace BuildTool.Editor.Tests
             Assert.AreEqual("0.0s", ctx.FormattedDuration);
             Assert.AreEqual("N/A", ctx.CommitText);
             Assert.IsTrue(ctx.VersionText.StartsWith("v"));
-            Assert.AreEqual("вљЄ", ctx.GetStatusEmoji());
+            Assert.AreEqual("\u26AA", ctx.GetStatusEmoji());
             Assert.AreEqual("Build Finished", ctx.GetStatusTitle());
         }
 
@@ -197,15 +197,25 @@ namespace BuildTool.Editor.Tests
         [Test]
         public async Task DispatchBatchAsync_DispatchesToConfiguredChannels()
         {
+            BuildNotificationSettings.MasterEnabled = true;
             BuildNotificationManager.DiscoverChannels(forceReload: true);
             var customChannel =
                 BuildNotificationManager.GetChannel("custom_test_channel") as CustomTestNotificationChannel;
             Assert.IsNotNull(customChannel);
 
-            var batchContext = new BuildBatchNotificationContext(null, null);
-            await BuildNotificationManager.DispatchBatchAsync(batchContext);
+            var origEnabled = customChannel.IsEnabled;
+            customChannel.IsEnabled = true;
+            try
+            {
+                var batchContext = new BuildBatchNotificationContext(null, null);
+                await BuildNotificationManager.DispatchBatchAsync(batchContext);
 
-            Assert.IsTrue(customChannel.BatchNotificationSent);
+                Assert.IsTrue(customChannel.BatchNotificationSent);
+            }
+            finally
+            {
+                customChannel.IsEnabled = origEnabled;
+            }
         }
 
         [Test]
@@ -215,7 +225,51 @@ namespace BuildTool.Editor.Tests
             Assert.IsTrue(channel.IsConfigured);
         }
 
+        [Test]
+        public void DiscordChannel_WithEnvVarOnly_ShowsEnvBadgeInSettingsGUI()
+        {
+            const string envVar = "DISCORD_WEBHOOK_URL";
+            var prevEnv = Environment.GetEnvironmentVariable(envVar);
+            BuildNotificationSettings.ClearDiscordWebhook();
 
+            try
+            {
+                Environment.SetEnvironmentVariable(envVar, "https://discord.com/api/webhooks/123/envtoken");
+                var channel = new DiscordNotificationChannel();
+                var gui = channel.CreateSettingsGUI();
+
+                var envBadge = gui.Q<Label>(className: "notif-env-badge");
+                Assert.IsNotNull(envBadge, "Expected ENV badge when secret comes from environment variable.");
+                Assert.AreEqual("ENV", envBadge.text);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(envVar, prevEnv);
+            }
+        }
+
+        [Test]
+        public void TelegramChatIds_Add_DoesNotBakeEnvVarIntoEditorPrefs()
+        {
+            const string envVar = "TELEGRAM_CHAT_ID";
+            var prevEnv = Environment.GetEnvironmentVariable(envVar);
+            BuildNotificationSettings.ClearTelegramChatIds();
+
+            try
+            {
+                Environment.SetEnvironmentVariable(envVar, "-100999888");
+                BuildNotificationSettings.AddTelegramChatId("-100111222");
+
+                var ids = BuildNotificationSettings.GetTelegramChatIds();
+                Assert.IsTrue(ids.Contains("-100111222"));
+                Assert.IsFalse(ids.Contains("-100999888"), "Adding an explicit ID must not persist the ENV ID.");
+            }
+            finally
+            {
+                BuildNotificationSettings.ClearTelegramChatIds();
+                Environment.SetEnvironmentVariable(envVar, prevEnv);
+            }
+        }
     }
 }
 

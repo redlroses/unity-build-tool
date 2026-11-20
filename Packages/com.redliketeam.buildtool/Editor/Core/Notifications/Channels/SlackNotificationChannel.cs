@@ -34,7 +34,8 @@ namespace BuildTool.Editor.Notifications.Channels
                 "SLACK_WEBHOOK_URL",
                 "Paste your Slack Incoming Webhook URL.",
                 SendTestNotificationAsync,
-                isUrl: true
+                isUrl: true,
+                hasExplicitVal: () => BuildNotificationSettings.HasExplicitSlackWebhook
             );
         }
 

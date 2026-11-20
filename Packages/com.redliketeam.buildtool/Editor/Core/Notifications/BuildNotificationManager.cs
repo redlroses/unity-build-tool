@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BuildTool.Tracking;
 using UnityEditor;
+using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
@@ -19,8 +20,8 @@ namespace BuildTool.Editor.Notifications
         {
             DiscoverChannels();
 
-            BuildTool.BuildFinished -= OnBuildFinished;
-            BuildTool.BuildFinished += OnBuildFinished;
+            BuildTool.BuildFinishedWithProfile -= OnBuildFinished;
+            BuildTool.BuildFinishedWithProfile += OnBuildFinished;
         }
 
         public static IReadOnlyList<INotificationChannel> Channels
@@ -53,14 +54,8 @@ namespace BuildTool.Editor.Notifications
 
             s_Channels.Clear();
 
-            var channelTypes = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a =>
-                {
-                    try { return a.GetTypes(); }
-                    catch { return Array.Empty<Type>(); }
-                })
-                .Where(t => t.IsClass && !t.IsAbstract && typeof(INotificationChannel).IsAssignableFrom(t))
-                .Where(t => t.GetConstructor(Type.EmptyTypes) != null);
+            var channelTypes = TypeCache.GetTypesDerivedFrom<INotificationChannel>()
+                .Where(t => t.IsClass && !t.IsAbstract && t.GetConstructor(Type.EmptyTypes) != null);
 
             foreach (var type in channelTypes)
             {
@@ -139,7 +134,7 @@ namespace BuildTool.Editor.Notifications
             return channel.Order;
         }
 
-        private static void OnBuildFinished(BuildReport report, BuildInfo info)
+        private static void OnBuildFinished(BuildReport report, BuildInfo info, BuildProfile profile)
         {
             if (!BuildNotificationSettings.MasterEnabled)
             {
@@ -151,7 +146,7 @@ namespace BuildTool.Editor.Notifications
                 return;
             }
 
-            var context = new BuildNotificationContext(report, info);
+            var context = new BuildNotificationContext(report, info, profile);
             _ = DispatchAsync(context).ContinueWith(t =>
             {
                 if (t.IsFaulted && t.Exception != null)

@@ -15,7 +15,7 @@ namespace BuildTool.Editor
     {
         public const string WindowTitle = "Welcome to Build Tool";
         public static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Welcome/BuildToolWelcomeWindow.uss");
-        public const string DefaultVersion = "1.0.0";
+        public const string DefaultVersion = "1.0.1";
         public const string ShowOnUpdatePrefKey = "build_tool_welcome_show_on_update";
         public const string ShowOnStartPrefKey = "build_tool_welcome_show_on_startup";
         public const string LastVersionPrefKey = "build_tool_welcome_last_version";
@@ -35,7 +35,7 @@ namespace BuildTool.Editor
         private const string GitRepoUrl = "https://github.com/redlroses/unity-build-tool";
         private const string GitIssuesUrl = "https://github.com/redlroses/unity-build-tool/issues";
         private const string GitPackageUrl =
-            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.0";
+            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.1";
 
         internal enum WelcomeTab
         {
@@ -66,15 +66,25 @@ namespace BuildTool.Editor
             var hasShownOnboardingKey = "build_tool_welcome_onboarding_shown".AppendProjectName();
             var hasShownOnboarding = EditorPrefs.GetBool(hasShownOnboardingKey, false);
             var showOnStart = EditorPrefs.GetBool(ShowOnStartPrefKey, false);
-            if (!hasShownOnboarding || showOnStart)
+            var showOnUpdate = EditorPrefs.GetBool(ShowOnUpdatePrefKey, true);
+            var lastVersion = EditorPrefs.GetString(LastVersionPrefKey, string.Empty);
+            var currentVersion = GetPackageVersion();
+            var isUpdated = !string.IsNullOrEmpty(lastVersion) &&
+                            !string.Equals(lastVersion, currentVersion, StringComparison.OrdinalIgnoreCase);
+
+            if (!hasShownOnboarding || showOnStart || (showOnUpdate && isUpdated))
             {
                 EditorPrefs.SetBool(hasShownOnboardingKey, true);
+                EditorPrefs.SetString(LastVersionPrefKey, currentVersion);
                 ShowWindow();
+            }
+            else if (string.IsNullOrEmpty(lastVersion))
+            {
+                EditorPrefs.SetString(LastVersionPrefKey, currentVersion);
             }
         }
 
         [MenuItem("Tools/Build Tool/Welcome Screen", priority = 20)]
-        [MenuItem("Window/Build Tool/Welcome Screen", priority = 20)]
         public static void ShowWindow()
         {
             var window = GetWindow<BuildToolWelcomeWindow>(WindowTitle);
@@ -385,7 +395,7 @@ namespace BuildTool.Editor
             bool isTracking = BuildTool.IsTrackingEnabled;
             var trackingBadge = new Label(isTracking ? "● Git Tracking Active" : "○ Git Tracking Standby");
             trackingBadge.AddToClassList("welcome-badge");
-            trackingBadge.AddToClassList(isTracking ? "welcome-badge-success" : "welcome-badge-info");
+            trackingBadge.AddToClassList(isTracking ? "welcome-badge-success" : "welcome-badge-neutral");
             box.Add(trackingBadge);
 
             bool isNotif = BuildNotificationSettings.MasterEnabled;
@@ -394,7 +404,7 @@ namespace BuildTool.Editor
                 ? $"● Notifications Active ({notifCount})"
                 : (isNotif ? "○ Notifications Enabled (0 Channels)" : "○ Notifications Off"));
             notifBadge.AddToClassList("welcome-badge");
-            notifBadge.AddToClassList(isNotif && notifCount > 0 ? "welcome-badge-success" : "welcome-badge-info");
+            notifBadge.AddToClassList(isNotif && notifCount > 0 ? "welcome-badge-success" : "welcome-badge-neutral");
             box.Add(notifBadge);
 
             container.Add(box);
@@ -432,7 +442,7 @@ namespace BuildTool.Editor
             {
                 var shortcutBadge = new Label(shortcut);
                 shortcutBadge.AddToClassList("welcome-badge");
-                shortcutBadge.AddToClassList("welcome-badge-info");
+                shortcutBadge.AddToClassList("welcome-badge-kbd");
                 header.Add(shortcutBadge);
             }
 
@@ -611,7 +621,7 @@ namespace BuildTool.Editor
 
             var sampleBadge = new Label(badgeText);
             sampleBadge.AddToClassList("welcome-badge");
-            sampleBadge.AddToClassList("welcome-badge-info");
+            sampleBadge.AddToClassList("welcome-badge-kbd");
             sampleHeader.Add(sampleBadge);
 
             sampleCard.Add(sampleHeader);
@@ -757,10 +767,11 @@ namespace BuildTool.Editor
             if (packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath))
             {
                 var prefix = $"{PackagePathHelper.PackageRoot}/";
+                var legacyPrefix = $"Packages/{PackagePathHelper.DefaultPackageId}/";
                 var relativeSub = normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
                     ? normalized.Substring(prefix.Length)
-                    : (normalized.StartsWith("Packages/com.buildtool/", StringComparison.OrdinalIgnoreCase)
-                        ? normalized.Substring("Packages/com.buildtool/".Length)
+                    : (normalized.StartsWith(legacyPrefix, StringComparison.OrdinalIgnoreCase)
+                        ? normalized.Substring(legacyPrefix.Length)
                         : normalized);
                 var inPackage = Path.Combine(packageInfo.resolvedPath, relativeSub);
                 if (Directory.Exists(inPackage))

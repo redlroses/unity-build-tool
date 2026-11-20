@@ -33,11 +33,12 @@ namespace BuildTool.Editor.Notifications.Channels
                 "Endpoint URL",
                 BuildNotificationSettings.GetGenericWebhookUrl,
                 BuildNotificationSettings.SaveGenericWebhookUrl,
-                BuildNotificationSettings.ClearGenericWebhook,
-                "GENERIC_WEBHOOK_URL",
+                BuildNotificationSettings.ClearGenericWebhookUrl,
+                "BUILD_WEBHOOK_URL",
                 "Target HTTP/HTTPS webhook URL endpoint.",
                 null,
-                isUrl: true
+                isUrl: true,
+                hasExplicitVal: () => BuildNotificationSettings.HasExplicitGenericWebhook
             ));
 
             body.Add(CreateMaskedField(
@@ -45,10 +46,11 @@ namespace BuildTool.Editor.Notifications.Channels
                 BuildNotificationSettings.GetGenericWebhookAuthHeader,
                 BuildNotificationSettings.SaveGenericWebhookAuthHeader,
                 () => BuildNotificationSettings.SaveGenericWebhookAuthHeader(null),
-                "GENERIC_WEBHOOK_AUTH",
+                "BUILD_WEBHOOK_AUTH",
                 "e.g. 'Bearer your-secret-token' or custom authorization key.",
                 null,
-                isUrl: false
+                isUrl: false,
+                hasExplicitVal: () => BuildNotificationSettings.HasExplicitGenericWebhookAuth
             ));
 
             body.Add(CreateTestButton(

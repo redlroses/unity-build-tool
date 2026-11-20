@@ -50,7 +50,8 @@ namespace BuildTool.Editor.Notifications.Channels
                 "DISCORD_WEBHOOK_URL",
                 "Paste your Discord channel Webhook URL (Integrations > Webhooks).",
                 SendTestNotificationAsync,
-                isUrl: true
+                isUrl: true,
+                hasExplicitVal: () => BuildNotificationSettings.HasExplicitDiscordWebhook
             );
         }
 

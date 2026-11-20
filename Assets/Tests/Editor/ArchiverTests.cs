@@ -226,5 +226,29 @@ namespace BuildTool.Editor.Tests
             var gui = ext.CreateGUI(Array.Empty<BuildProfile>());
             Assert.IsNull(gui.Q<VisualElement>(className: "build-extension-badges"));
         }
+
+        [Test]
+        public void Initialize_DoesNotMutateEditorPrefs()
+        {
+            var baseline = new Archiver();
+            var origEnabled = baseline.IsEnabled;
+
+            try
+            {
+                var archiver = new Archiver();
+                var req = new BuildExecutionRequest();
+                req.ExtensionArgs["zip"] = origEnabled ? "false" : "all";
+
+                archiver.Initialize(new BuildContext(req));
+
+                Assert.AreEqual(!origEnabled, archiver.IsEnabled);
+                var fresh = new Archiver();
+                Assert.AreEqual(origEnabled, fresh.IsEnabled, "CLI override must not mutate EditorPrefs.");
+            }
+            finally
+            {
+                baseline.IsEnabled = origEnabled;
+            }
+        }
     }
 }

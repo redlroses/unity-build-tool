@@ -1,6 +1,6 @@
-using BuildTool.Editor;
 using BuildTool.Editor.DirectoryBuilders;
 using NUnit.Framework;
+using BuildToolCore = BuildTool.Editor.BuildTool;
 
 namespace BuildTool.Tracking.Editor.Tests
 {
@@ -10,12 +10,12 @@ namespace BuildTool.Tracking.Editor.Tests
         [Test]
         public void BuildIndex_WhenRegisterDisabled_PreviewWritesLocal()
         {
-            var previousRegisterState = BuildTool.IsRegisterVersionEnabled;
+            var previousRegisterState = BuildToolCore.IsRegisterVersionEnabled;
             try
             {
-                BuildTool.IsRegisterVersionEnabled = false;
+                BuildToolCore.IsRegisterVersionEnabled = false;
 
-                var rootPath = BuildTool.GetRootBuildPath();
+                var rootPath = BuildToolCore.GetRootBuildPath();
                 Assert.IsTrue(
                     rootPath.Contains("local"),
                     $"Expected root preview to contain 'local', got '{rootPath}'");
@@ -28,19 +28,19 @@ namespace BuildTool.Tracking.Editor.Tests
             }
             finally
             {
-                BuildTool.IsRegisterVersionEnabled = previousRegisterState;
+                BuildToolCore.IsRegisterVersionEnabled = previousRegisterState;
             }
         }
 
         [Test]
         public void BuildIndex_WhenRegisterEnabled_PreviewDoesNotWriteLocal()
         {
-            var previousRegisterState = BuildTool.IsRegisterVersionEnabled;
+            var previousRegisterState = BuildToolCore.IsRegisterVersionEnabled;
             try
             {
-                BuildTool.IsRegisterVersionEnabled = true;
+                BuildToolCore.IsRegisterVersionEnabled = true;
 
-                var rootPath = BuildTool.GetRootBuildPath();
+                var rootPath = BuildToolCore.GetRootBuildPath();
                 Assert.IsFalse(
                     rootPath.Contains(".local"),
                     $"Expected root preview to not contain '.local' when register is on, got '{rootPath}'");
@@ -53,7 +53,7 @@ namespace BuildTool.Tracking.Editor.Tests
             }
             finally
             {
-                BuildTool.IsRegisterVersionEnabled = previousRegisterState;
+                BuildToolCore.IsRegisterVersionEnabled = previousRegisterState;
             }
         }
     }

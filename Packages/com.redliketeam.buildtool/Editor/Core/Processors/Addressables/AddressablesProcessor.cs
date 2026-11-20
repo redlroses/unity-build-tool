@@ -27,9 +27,11 @@ namespace BuildTool.Editor.Processors
             "Forces building of Addressables content before the player build, preventing missing bundles.";
         protected override string EnabledSaveKey => _enabledToggleSaveKey;
 
+        private bool? _isEnabledOverride;
+
         public override bool IsEnabled
         {
-            get => EditorPrefs.GetBool(_enabledToggleSaveKey, false);
+            get => _isEnabledOverride ?? EditorPrefs.GetBool(_enabledToggleSaveKey, false);
             set => EditorPrefs.SetBool(_enabledToggleSaveKey, value);
         }
 
@@ -91,11 +93,11 @@ namespace BuildTool.Editor.Processors
                 trimmed.Equals("none", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Equals("off", StringComparison.OrdinalIgnoreCase))
             {
-                IsEnabled = false;
+                _isEnabledOverride = false;
                 return;
             }
 
-            IsEnabled = true;
+            _isEnabledOverride = true;
 
             if (trimmed.Equals("all", StringComparison.OrdinalIgnoreCase))
             {

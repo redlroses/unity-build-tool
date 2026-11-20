@@ -51,7 +51,7 @@ namespace BuildTool.Tracking.Editor
 
         private string ValidateAndFixBranchName(string branchName)
         {
-            branchName = branchName?.Trim('/') ?? "";
+            branchName = branchName?.Trim('/', '-') ?? "";
             branchName = new string(branchName.Where(c => c >= 32 && c != 127).ToArray());
             branchName = Regex.Replace(branchName, @"\.\.+", "-");
             branchName = Regex.Replace(branchName, @"[ ~\^:?*\[\]@\\]", "-");

@@ -34,14 +34,14 @@ An automation and pipeline orchestration tool for Unity that configures, execute
 2. Click **+** → **Add package from git URL...**
 3. Paste:
    ```text
-   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.0
+   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.1
    ```
 
 Alternatively, add it directly to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.0"
+    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.1"
   }
 }
 ```
@@ -54,7 +54,7 @@ Alternatively, add it directly to your `Packages/manifest.json`:
 
 Open the window from the top menu: **Tools → Build Tool → Show Build Window** (Shortcut: `Ctrl + Shift + Alt + B`).
 
-1. **Select Profiles**: Check the `BuildProfile` assets you wish to build sequentially. Use **All** / **None** for quick selection, and the **Switch** button next to any profile to activate it in the editor immediately.
+1. **Select Profiles**: Check the `BuildProfile` assets you wish to build sequentially. Use **All** / **None** for quick selection, **Setup Wizard** / **Settings** icon buttons in the header, and the **Switch** button next to any profile to activate it in the editor immediately.
 2. **Build Options**:
    - **Development build**: Enable profiler connection, script debugging, and debug symbols.
    - **Clean build**: Clear Unity build cache before compiling (`BuildOptions.CleanBuildCache`) to force full asset rebuild.
@@ -68,7 +68,6 @@ Open the window from the top menu: **Tools → Build Tool → Show Build Window*
    - **Clear AppData**: Clear `Application.persistentDataPath` to test clean-slate launches.
    - **Open AppData**: Reveal persistent data directory in file explorer.
    - **Open Build Folder**: Reveal the configured root build directory.
-   - **Setup Wizard**: Shortcut to module configuration.
 5. **Build**: Click **Build** to execute the pipeline. Progress is displayed in real time, and profile logs are saved to `<BuildFolder>/Logs/`.
 
 ### 2. Setup Wizard
@@ -81,7 +80,7 @@ Open **Tools → Build Tool → Setup Wizard** to configure optional modules wit
 
 ### 3. Welcome Screen
 
-Open **Tools → Build Tool → Welcome Screen** (or **Window → Build Tool → Welcome Screen**) for a guided overview, quick access to settings and wizards, interactive readiness checklist, release notes, and reference samples.
+Open **Tools → Build Tool → Welcome Screen** for a guided overview, quick access to settings and wizards, interactive readiness checklist, release notes, and reference samples.
 
 ---
 
@@ -419,7 +418,7 @@ Build Tool includes built-in support for **Negative Refspecs** (Git 2.29+):
 ### How to Use Tracking in Your Workflow
 
 #### 1. In Unity Editor (Build Window)
-- Open **Tools → Build → Show Build Window** (Shortcut: `Ctrl + Shift + Alt + B`).
+- Open **Tools → Build Tool → Show Build Window** (Shortcut: `Ctrl + Shift + Alt + B`).
 - In the options panel, check **Register version** (only visible when `BUILDTOOL_TRACKING` is active).
 - Click **Build**. The progress bar will reflect tracking initialization and index synchronization.
 

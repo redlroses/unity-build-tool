@@ -49,6 +49,8 @@ namespace BuildTool.Editor.Pipeline
             };
 
             var reports = new List<(BuildProfile Profile, BuildReport Report)>();
+            var originalTargetGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
+            BuildTool.ActiveRunRegisterOverride = request.RegisterVersion;
 
             try
             {
@@ -390,6 +392,12 @@ namespace BuildTool.Editor.Pipeline
             }
             finally
             {
+                BuildTool.ActiveRunRegisterOverride = null;
+                if (EditorUserBuildSettings.selectedBuildTargetGroup != originalTargetGroup &&
+                    originalTargetGroup != BuildTargetGroup.Unknown)
+                {
+                    EditorUserBuildSettings.selectedBuildTargetGroup = originalTargetGroup;
+                }
                 BuildTool.Dispose();
             }
         }
@@ -539,56 +547,80 @@ namespace BuildTool.Editor.Pipeline
             return (preprocessors, postprocessors);
         }
 
-        private static bool IsSafeDirectoryToClear(string fullPath)
+        internal static bool IsSafeDirectoryToClear(string fullPath)
         {
             if (string.IsNullOrWhiteSpace(fullPath))
             {
                 return false;
             }
 
-            var normalized = Path.GetFullPath(fullPath).TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var root = Path.GetPathRoot(normalized)?.TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var normalized = NormalizeDirectoryPath(fullPath);
+            var root = NormalizeDirectoryPath(Path.GetPathRoot(normalized));
 
             if (string.Equals(normalized, root, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
 
-            var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..")).TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var projectRoot = NormalizeDirectoryPath(Path.Combine(Application.dataPath, ".."));
 
-            if (string.Equals(normalized, projectRoot, StringComparison.OrdinalIgnoreCase))
+            // Refuse project root itself or any parent directory containing the project
+            if (IsSameOrSubPath(projectRoot, normalized))
             {
                 return false;
             }
 
-            var assetsPath = Path.GetFullPath(Application.dataPath).TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-            if (normalized.StartsWith(assetsPath, StringComparison.OrdinalIgnoreCase))
+            var protectedDirs = new[]
             {
-                return false;
-            }
+                Application.dataPath,
+                Path.Combine(projectRoot, "Packages"),
+                Path.Combine(projectRoot, "ProjectSettings"),
+                Path.Combine(projectRoot, "Library"),
+                Path.Combine(projectRoot, "UserSettings"),
+                Path.Combine(projectRoot, "Temp"),
+                Path.Combine(projectRoot, "Logs"),
+                Path.Combine(projectRoot, ".git")
+            };
 
-            var packagesPath = Path.GetFullPath(Path.Combine(projectRoot, "Packages")).TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-            if (normalized.StartsWith(packagesPath, StringComparison.OrdinalIgnoreCase))
+            foreach (var dir in protectedDirs)
             {
-                return false;
-            }
-
-            var projectSettingsPath = Path.GetFullPath(Path.Combine(projectRoot, "ProjectSettings")).TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-            if (normalized.StartsWith(projectSettingsPath, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
+                if (IsSameOrSubPath(normalized, NormalizeDirectoryPath(dir)))
+                {
+                    return false;
+                }
             }
 
             return true;
+        }
+
+        private static string NormalizeDirectoryPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return string.Empty;
+            }
+
+            return Path.GetFullPath(path).TrimEnd(
+                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+
+        private static bool IsSameOrSubPath(string candidate, string basePath)
+        {
+            if (string.IsNullOrEmpty(candidate) || string.IsNullOrEmpty(basePath))
+            {
+                return false;
+            }
+
+            if (string.Equals(candidate, basePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var prefix = basePath + Path.DirectorySeparatorChar;
+            var altPrefix = basePath + Path.AltDirectorySeparatorChar;
+
+            return candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+                   candidate.StartsWith(altPrefix, StringComparison.OrdinalIgnoreCase);
         }
 
         public static void DeleteFilesAndDirectories(string directory)
@@ -713,7 +745,7 @@ namespace BuildTool.Editor.Pipeline
                     var instance = Activator.CreateInstance(item.Type);
                     var extInfo = new ExtensionInfo
                     {
-                        Name = item.Type.Name,
+                        Name = !string.IsNullOrWhiteSpace(item.Attr.Title) ? item.Attr.Title : item.Type.Name,
                         TypeName = item.Type.FullName,
                         Order = item.Attr.Order
                     };

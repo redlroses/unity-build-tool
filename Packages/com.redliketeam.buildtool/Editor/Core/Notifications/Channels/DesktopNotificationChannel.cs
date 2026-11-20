@@ -14,7 +14,7 @@ namespace BuildTool.Editor.Notifications.Channels
         public override string Description =>
             "Shows local notifications and plays sound when builds finish (offline, zero-configuration).";
         public override int Order => 40;
-        public override string DotColor => "#38BDF8";
+        public override string DotColor => "#F59E0B";
 
         public override bool IsEnabled
         {

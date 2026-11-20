@@ -280,8 +280,8 @@ namespace BuildTool.Tracking.Editor
             }
 
             var args = string.IsNullOrWhiteSpace(parameters)
-                ? $"clone {repoUrl} \"{_repoPath}\""
-                : $"clone {parameters.Trim()} {repoUrl} \"{_repoPath}\"";
+                ? $"clone \"{repoUrl}\" \"{_repoPath}\""
+                : $"clone {parameters.Trim()} \"{repoUrl}\" \"{_repoPath}\"";
 
             await StartProcess(CreateProcessInfo(args, parentDir),
                 "Repository cloned successfully.",
@@ -335,6 +335,24 @@ namespace BuildTool.Tracking.Editor
                 $"Failed to reset to origin/{branchName}.");
         }
 
+        private async Task StageFiles(string filesPath)
+        {
+            if (string.IsNullOrWhiteSpace(filesPath) ||
+                string.Equals(filesPath.Trim(), "-A", StringComparison.Ordinal) ||
+                string.Equals(filesPath.Trim(), "--all", StringComparison.Ordinal))
+            {
+                await SendCommand("add -A",
+                    "All files added successfully.",
+                    "Failed to add all files.");
+            }
+            else
+            {
+                await SendCommand($"add -- \"{filesPath}\"",
+                    "Files added successfully.",
+                    "Failed to add files.");
+            }
+        }
+
         public async Task Commit(string commitMessage, string filesPath = null)
         {
             if (string.IsNullOrEmpty(commitMessage))
@@ -346,9 +364,7 @@ namespace BuildTool.Tracking.Editor
 
             if (!string.IsNullOrEmpty(filesPath))
             {
-                await SendCommand($"add -- \"{filesPath}\"",
-                    "Files added successfully.",
-                    "Failed to add files.");
+                await StageFiles(filesPath);
             }
 
             var tempMsgFile = Path.Combine(Path.GetTempPath(), $"git_msg_{Guid.NewGuid():N}.txt");
@@ -383,18 +399,7 @@ namespace BuildTool.Tracking.Editor
 
             Log($"Pending: Single orphan commit on branch {branchName} with message {commitMessage}...");
 
-            if (!string.IsNullOrEmpty(filesPath))
-            {
-                await SendCommand($"add -- \"{filesPath}\"",
-                    "Files added successfully.",
-                    "Failed to add files.");
-            }
-            else
-            {
-                await SendCommand("add -A",
-                    "All files added successfully.",
-                    "Failed to add all files.");
-            }
+            await StageFiles(filesPath);
 
             var treeSha = (await SendCommand("write-tree",
                 "Wrote tree.",

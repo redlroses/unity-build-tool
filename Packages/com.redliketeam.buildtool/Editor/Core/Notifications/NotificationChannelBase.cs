@@ -54,8 +54,20 @@ namespace BuildTool.Editor.Notifications
             var header = new VisualElement();
             header.AddToClassList("notif-channel-header");
 
+            var toggle = new Toggle
+            {
+                value = IsEnabled
+            };
+            BuildNotificationSettingsProvider.ApplySwitchStyle(toggle);
+            toggle.AddToClassList("notif-channel-switch");
+            header.Add(toggle);
+
             var titleRow = new VisualElement();
             titleRow.AddToClassList("notif-channel-title-row");
+
+            var title = new Label(DisplayName);
+            title.AddToClassList("notif-channel-title");
+            titleRow.Add(title);
 
             var dot = new VisualElement();
             dot.AddToClassList("notif-channel-dot");
@@ -66,17 +78,7 @@ namespace BuildTool.Editor.Notifications
             dot.style.opacity = IsEnabled ? 1f : 0.45f;
             titleRow.Add(dot);
 
-            var title = new Label(DisplayName);
-            title.AddToClassList("notif-channel-title");
-            titleRow.Add(title);
-
             header.Add(titleRow);
-
-            var toggle = new Toggle
-            {
-                value = IsEnabled
-            };
-            header.Add(toggle);
             card.Add(header);
 
             if (!string.IsNullOrEmpty(Description))
@@ -164,7 +166,8 @@ namespace BuildTool.Editor.Notifications
             string envVarName = null,
             string hintText = null,
             Func<Task<bool>> onTest = null,
-            bool isUrl = false)
+            bool isUrl = false,
+            Func<bool> hasExplicitVal = null)
         {
             var isEditing = false;
             var container = new VisualElement();
@@ -174,8 +177,12 @@ namespace BuildTool.Editor.Notifications
                 container.Clear();
 
                 var val = getVal();
-                var hasExplicit = !string.IsNullOrEmpty(val);
                 var envVal = !string.IsNullOrEmpty(envVarName) ? Environment.GetEnvironmentVariable(envVarName) : null;
+                var hasExplicit = hasExplicitVal != null
+                    ? hasExplicitVal() && !string.IsNullOrEmpty(val)
+                    : !string.IsNullOrEmpty(val) &&
+                      (string.IsNullOrWhiteSpace(envVal) ||
+                       !string.Equals(val.Trim(), envVal.Trim(), StringComparison.Ordinal));
                 var isEnv = !hasExplicit && !string.IsNullOrWhiteSpace(envVal);
 
                 if (hasExplicit && !isEditing)

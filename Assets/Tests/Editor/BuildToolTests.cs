@@ -157,6 +157,30 @@ namespace BuildTool.Editor.Tests
                 UnityEngine.Object.DestroyImmediate(profile);
             }
         }
+
+        [Test]
+        public void ResolveOutputDirectory_AppBundle_ReturnsParentDirectory()
+        {
+            var tempRoot = Path.Combine(Path.GetTempPath(), "BuildTool_AppBundle_" + Guid.NewGuid().ToString("N"));
+            var appBundleDir = Path.Combine(tempRoot, "MyGame.app");
+            var webglDir = Path.Combine(tempRoot, "WebGLOutput");
+
+            Directory.CreateDirectory(appBundleDir);
+            Directory.CreateDirectory(webglDir);
+
+            try
+            {
+                Assert.AreEqual(tempRoot, BuildTool.ResolveOutputDirectory(appBundleDir));
+                Assert.AreEqual(webglDir, BuildTool.ResolveOutputDirectory(webglDir));
+            }
+            finally
+            {
+                if (Directory.Exists(tempRoot))
+                {
+                    Directory.Delete(tempRoot, true);
+                }
+            }
+        }
     }
 }
 

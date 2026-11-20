@@ -517,5 +517,34 @@ namespace BuildTool.Editor.Tests
                 UnityEngine.Object.DestroyImmediate(profile);
             }
         }
+
+        [Test]
+        public void IsSafeDirectoryToClear_RejectsParentAndProtectedFolders()
+        {
+            var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            var parentOfProject = Directory.GetParent(projectRoot)?.FullName;
+
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(projectRoot));
+            if (!string.IsNullOrEmpty(parentOfProject))
+            {
+                Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(parentOfProject));
+            }
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(Application.dataPath));
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "Packages")));
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "ProjectSettings")));
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "Library")));
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "Temp")));
+            Assert.IsFalse(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, ".git")));
+        }
+
+        [Test]
+        public void IsSafeDirectoryToClear_AllowsSiblingAndOutputFolders()
+        {
+            var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+
+            Assert.IsTrue(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "AssetsBuilds")));
+            Assert.IsTrue(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "Build", "Release")));
+            Assert.IsTrue(BuildPipelineRunner.IsSafeDirectoryToClear(_tempTestDir));
+        }
     }
 }
