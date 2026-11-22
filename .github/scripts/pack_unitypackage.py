@@ -1,9 +1,8 @@
 import sys
 import os
 import re
-import io
-import time
-import tarfile
+import subprocess
+import tempfile
 
 def get_guid(meta_path):
     with open(meta_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -57,33 +56,28 @@ DefaultImporter:
             target_path = f'{dest_prefix}/{rel_file}'.replace('\\', '/')
             entries.append((guid, target_path, meta_bytes, asset_bytes))
 
-    with tarfile.open(output_pkg, 'w:gz') as tar:
+    output_abs = os.path.abspath(output_pkg)
+    with tempfile.TemporaryDirectory() as stage_dir:
+        guid_dirs = []
         for guid, target_path, meta_bytes, asset_bytes in entries:
-            dir_info = tarfile.TarInfo(name=guid)
-            dir_info.type = tarfile.DIRTYPE
-            dir_info.mode = 0o755
-            dir_info.mtime = int(time.time())
-            tar.addfile(dir_info)
+            entry_dir = os.path.join(stage_dir, guid)
+            os.makedirs(entry_dir, exist_ok=True)
+            guid_dirs.append(guid)
 
-            pn_info = tarfile.TarInfo(name=f'{guid}/pathname')
-            pn_bytes = target_path.encode('utf-8')
-            pn_info.size = len(pn_bytes)
-            pn_info.mode = 0o644
-            pn_info.mtime = int(time.time())
-            tar.addfile(pn_info, io.BytesIO(pn_bytes))
+            with open(os.path.join(entry_dir, 'pathname'), 'wb') as f:
+                f.write(target_path.encode('utf-8'))
 
-            meta_info = tarfile.TarInfo(name=f'{guid}/asset.meta')
-            meta_info.size = len(meta_bytes)
-            meta_info.mode = 0o644
-            meta_info.mtime = int(time.time())
-            tar.addfile(meta_info, io.BytesIO(meta_bytes))
+            with open(os.path.join(entry_dir, 'asset.meta'), 'wb') as f:
+                f.write(meta_bytes)
 
             if asset_bytes is not None:
-                asset_info = tarfile.TarInfo(name=f'{guid}/asset')
-                asset_info.size = len(asset_bytes)
-                asset_info.mode = 0o644
-                asset_info.mtime = int(time.time())
-                tar.addfile(asset_info, io.BytesIO(asset_bytes))
+                with open(os.path.join(entry_dir, 'asset'), 'wb') as f:
+                    f.write(asset_bytes)
+
+        subprocess.run(
+            ['tar', '--format=ustar', '-czf', output_abs, '-C', stage_dir, *guid_dirs],
+            check=True,
+        )
 
 if __name__ == '__main__':
     src = sys.argv[1] if len(sys.argv) > 1 else 'Packages/com.redliketeam.buildtool'
