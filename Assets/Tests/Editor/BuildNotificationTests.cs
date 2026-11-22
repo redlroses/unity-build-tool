@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BuildTool.Editor.Notifications;
 using BuildTool.Editor.Notifications.Channels;
@@ -52,6 +55,7 @@ namespace BuildTool.Editor.Tests
         private bool _origWebhookEnabled;
         private string _origWebhookUrl;
         private bool _origDesktopEnabled;
+        private bool _origTelegramEnabled;
 
         [SetUp]
         public void SetUp()
@@ -64,6 +68,7 @@ namespace BuildTool.Editor.Tests
             _origWebhookEnabled = BuildNotificationSettings.GenericWebhookEnabled;
             _origWebhookUrl = BuildNotificationSettings.GetGenericWebhookUrl();
             _origDesktopEnabled = BuildNotificationSettings.DesktopEnabled;
+            _origTelegramEnabled = BuildNotificationSettings.TelegramEnabled;
         }
 
         [TearDown]
@@ -80,6 +85,7 @@ namespace BuildTool.Editor.Tests
             BuildNotificationSettings.SaveGenericWebhookUrl(_origWebhookUrl);
 
             BuildNotificationSettings.DesktopEnabled = _origDesktopEnabled;
+            BuildNotificationSettings.TelegramEnabled = _origTelegramEnabled;
         }
 
         [Test]
@@ -198,13 +204,24 @@ namespace BuildTool.Editor.Tests
         public async Task DispatchBatchAsync_DispatchesToConfiguredChannels()
         {
             BuildNotificationSettings.MasterEnabled = true;
+            BuildNotificationSettings.DiscordEnabled = false;
+            BuildNotificationSettings.SlackEnabled = false;
+            BuildNotificationSettings.GenericWebhookEnabled = false;
+            BuildNotificationSettings.DesktopEnabled = false;
+            BuildNotificationSettings.TelegramEnabled = false;
+
             BuildNotificationManager.DiscoverChannels(forceReload: true);
             var customChannel =
                 BuildNotificationManager.GetChannel("custom_test_channel") as CustomTestNotificationChannel;
             Assert.IsNotNull(customChannel);
 
-            var origEnabled = customChannel.IsEnabled;
-            customChannel.IsEnabled = true;
+            var origStates = new Dictionary<INotificationChannel, bool>();
+            foreach (var channel in BuildNotificationManager.Channels)
+            {
+                origStates[channel] = channel.IsEnabled;
+                channel.IsEnabled = channel == customChannel;
+            }
+
             try
             {
                 var batchContext = new BuildBatchNotificationContext(null, null);
@@ -214,7 +231,10 @@ namespace BuildTool.Editor.Tests
             }
             finally
             {
-                customChannel.IsEnabled = origEnabled;
+                foreach (var kvp in origStates)
+                {
+                    kvp.Key.IsEnabled = kvp.Value;
+                }
             }
         }
 
@@ -269,6 +289,80 @@ namespace BuildTool.Editor.Tests
                 BuildNotificationSettings.ClearTelegramChatIds();
                 Environment.SetEnvironmentVariable(envVar, prevEnv);
             }
+        }
+
+        [Test]
+        public void ParseProxyServer_ResolvesFormatsCorrectly()
+        {
+            Assert.AreEqual(
+                new Uri("http://127.0.0.1:9697/"),
+                NotificationChannelBase.ParseProxyServer("127.0.0.1:9697", "https"));
+            Assert.AreEqual(
+                new Uri("http://127.0.0.1:9697/"),
+                NotificationChannelBase.ParseProxyServer("http://127.0.0.1:9697", "https"));
+            Assert.AreEqual(
+                new Uri("http://127.0.0.1:8443/"),
+                NotificationChannelBase.ParseProxyServer("http=127.0.0.1:8080;https=127.0.0.1:8443", "https"));
+            Assert.AreEqual(
+                new Uri("http://127.0.0.1:8080/"),
+                NotificationChannelBase.ParseProxyServer("http=127.0.0.1:8080;https=127.0.0.1:8443", "http"));
+            Assert.AreEqual(
+                new Uri("http://127.0.0.1:8080/"),
+                NotificationChannelBase.ParseProxyServer("http=127.0.0.1:8080", "https"));
+            Assert.IsNull(NotificationChannelBase.ParseProxyServer("socks=127.0.0.1:1080", "https"));
+            Assert.IsNull(NotificationChannelBase.ParseProxyServer("socks5://127.0.0.1:1080", "https"));
+            Assert.IsNull(NotificationChannelBase.ParseProxyServer(string.Empty, "https"));
+            Assert.IsNull(NotificationChannelBase.ParseProxyServer(null, "https"));
+        }
+
+        [Test]
+        public void ParseProxyBypass_ConvertsGlobsAndLocalFlag()
+        {
+            var patterns = NotificationChannelBase.ParseProxyBypass("localhost;127.*;<local>", out var bypassOnLocal);
+
+            Assert.IsTrue(bypassOnLocal);
+            Assert.AreEqual(2, patterns.Length);
+            Assert.AreEqual("^localhost$", patterns[0]);
+            Assert.AreEqual(@"^127\..*$", patterns[1]);
+
+            foreach (var pattern in patterns)
+            {
+                Assert.DoesNotThrow(() => new Regex(pattern));
+            }
+
+            var emptyPatterns = NotificationChannelBase.ParseProxyBypass(string.Empty, out var emptyBypassOnLocal);
+            Assert.IsFalse(emptyBypassOnLocal);
+            Assert.AreEqual(0, emptyPatterns.Length);
+        }
+
+        [Test]
+        public void IsTransientStatusCode_IdentifiesRetryableResponses()
+        {
+            Assert.IsTrue(NotificationChannelBase.IsTransientStatusCode((HttpStatusCode)429));
+            Assert.IsTrue(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.RequestTimeout));
+            Assert.IsTrue(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.InternalServerError));
+            Assert.IsTrue(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.BadGateway));
+            Assert.IsTrue(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.ServiceUnavailable));
+
+            Assert.IsFalse(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.OK));
+            Assert.IsFalse(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.BadRequest));
+            Assert.IsFalse(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.Unauthorized));
+            Assert.IsFalse(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.Forbidden));
+            Assert.IsFalse(NotificationChannelBase.IsTransientStatusCode(HttpStatusCode.NotFound));
+        }
+
+        [Test]
+        public void GetRetryDelayMs_AppliesBackoffAndClampsRetryAfter()
+        {
+            Assert.AreEqual(500, NotificationChannelBase.GetRetryDelayMs(0));
+            Assert.AreEqual(1500, NotificationChannelBase.GetRetryDelayMs(1));
+            Assert.AreEqual(2000, NotificationChannelBase.GetRetryDelayMs(2));
+            Assert.AreEqual(4000, NotificationChannelBase.GetRetryDelayMs(3));
+            Assert.AreEqual(5000, NotificationChannelBase.GetRetryDelayMs(4));
+
+            Assert.AreEqual(250, NotificationChannelBase.GetRetryDelayMs(0, TimeSpan.FromMilliseconds(50)));
+            Assert.AreEqual(1200, NotificationChannelBase.GetRetryDelayMs(0, TimeSpan.FromMilliseconds(1200)));
+            Assert.AreEqual(5000, NotificationChannelBase.GetRetryDelayMs(0, TimeSpan.FromSeconds(30)));
         }
     }
 }

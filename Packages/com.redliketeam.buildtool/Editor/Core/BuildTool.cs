@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using BuildTool.Editor.DirectoryBuilders;
 using BuildTool.Editor.Pipeline;
@@ -16,6 +15,7 @@ using BuildTool.Tracking.Editor;
 using UnityEditor;
 using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
+using UnityEditorInternal;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -182,6 +182,117 @@ namespace BuildTool.Editor
         public static Func<string, Task> FinalizeRemoteReportHandler { get; set; }
         public static Action DisposeHandler { get; set; }
 
+        internal static int SynchronousWaitDepth;
+
+        private static Action s_SignalTick;
+        private static bool s_SignalTickResolved;
+        private static Func<bool> s_IsScriptReloadRequested;
+        private static bool s_IsScriptReloadRequestedResolved;
+        private static readonly System.Diagnostics.Stopwatch s_TickThrottleStopwatch =
+            System.Diagnostics.Stopwatch.StartNew();
+        private static long s_LastTickMs = -1000;
+
+        internal static bool ShouldDeferToEditorDelayCall =>
+            !Application.isBatchMode &&
+            SynchronousWaitDepth <= 0 &&
+            (PipelineService == null || PipelineService is UnityBuildPipelineService);
+
+        internal static void RequestEditorTick()
+        {
+            if (!s_SignalTickResolved)
+            {
+                s_SignalTickResolved = true;
+                try
+                {
+                    var method = typeof(EditorApplication).GetMethod(
+                        "SignalTick", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                    if (method != null)
+                    {
+                        s_SignalTick = (Action)Delegate.CreateDelegate(typeof(Action), method);
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            s_SignalTick?.Invoke();
+        }
+
+        internal static void RequestEditorTickThrottled(int intervalMs = 150)
+        {
+            var now = s_TickThrottleStopwatch.ElapsedMilliseconds;
+            if (now - s_LastTickMs < intervalMs)
+            {
+                return;
+            }
+
+            s_LastTickMs = now;
+            RequestEditorTick();
+        }
+
+        internal static bool IsScriptReloadRequested()
+        {
+            if (!s_IsScriptReloadRequestedResolved)
+            {
+                s_IsScriptReloadRequestedResolved = true;
+                try
+                {
+                    var method = typeof(InternalEditorUtility).GetMethod(
+                        "IsScriptReloadRequested", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                    if (method != null)
+                    {
+                        s_IsScriptReloadRequested = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), method);
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return s_IsScriptReloadRequested != null && s_IsScriptReloadRequested();
+        }
+
+        internal static void ScheduleOnEditorDelayCall(Action callback)
+        {
+            void CheckAndRun()
+            {
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+                {
+                    EditorApplication.delayCall += CheckAndRun;
+                    return;
+                }
+
+                callback();
+            }
+
+            EditorApplication.delayCall += CheckAndRun;
+        }
+
+        private static Task<T> RunOnEditorDelayCallAsync<T>(Func<T> func)
+        {
+            if (!ShouldDeferToEditorDelayCall)
+            {
+                return Task.FromResult(func());
+            }
+
+            var tcs = new TaskCompletionSource<T>();
+
+            ScheduleOnEditorDelayCall(() =>
+            {
+                try
+                {
+                    tcs.SetResult(func());
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+
+            return tcs.Task;
+        }
+
         /// <summary>
         ///     Builds the specified profile with the specified options and returns a <see cref="BuildPlayerResult" />.
         /// </summary>
@@ -196,17 +307,31 @@ namespace BuildTool.Editor
             IEnumerable<IBuildPreprocessor> preprocessors = null,
             IEnumerable<IBuildPostprocessor> postprocessors = null)
         {
-            SyncSelectedBuildTargetGroup(profile);
-
-            if (preprocessors != null)
+            if (ShouldDeferToEditorDelayCall && !InternalEditorUtility.isApplicationActive)
             {
-                foreach (var preprocess in preprocessors)
-                {
-                    preprocess?.PreProcess(profile);
-                }
+                var profileName = BuildReportFormatter.GetSafeProfileName(profile);
+                Debug.Log($"[BuildTool] Waiting for Unity Editor focus to start build for '{profileName}'...");
             }
 
-            var (path, result) = await AsyncBuild(profile, buildPath, options);
+            var (path, result) = await RunOnEditorDelayCallAsync(() =>
+            {
+                SyncSelectedBuildTargetGroup(profile);
+
+                if (preprocessors != null)
+                {
+                    foreach (var preprocess in preprocessors)
+                    {
+                        preprocess?.PreProcess(profile);
+                    }
+                }
+
+                var builder = BuildToolSettings.instance.GetPathBuilderOrDefault(profile);
+                var locationPathName = builder.GetLocationPathName(profile, buildPath);
+                var buildPlayerOptions = CreateBuildPlayerOptions(profile, locationPathName, options);
+                var buildResult = ExecuteBuildPlayerCore(buildPlayerOptions, profile);
+
+                return (locationPathName, buildResult);
+            });
 
             if (result != null && result.Success && postprocessors != null)
             {
@@ -328,22 +453,6 @@ namespace BuildTool.Editor
             return AssetDatabase.FindAssets("t:BuildProfile")
                 .Select(guid => AssetDatabase.LoadAssetAtPath<BuildProfile>(AssetDatabase.GUIDToAssetPath(guid)))
                 .ToList();
-        }
-
-        private static async Task<(string Path, BuildPlayerResult Result)> AsyncBuild(
-            BuildProfile profile,
-            string buildPath,
-            BuildOptions options = BuildOptions.None)
-        {
-            var builder = BuildToolSettings.instance.GetPathBuilderOrDefault(profile);
-            var locationPathName = builder.GetLocationPathName(profile, buildPath);
-
-            var buildPlayerOptions =
-                CreateBuildPlayerOptions(profile, locationPathName, options);
-
-            var result = await ProcessBuild(buildPlayerOptions, profile);
-
-            return (locationPathName, result);
         }
 
         private static BuildPlayerWithProfileOptions CreateBuildPlayerOptions(
@@ -576,37 +685,6 @@ namespace BuildTool.Editor
             {
                 EditorUserBuildSettings.selectedBuildTargetGroup = targetGroup;
             }
-        }
-
-        private static Task<BuildPlayerResult> ProcessBuild(BuildPlayerWithProfileOptions options, BuildProfile profile)
-        {
-            if (PipelineService != null && !(PipelineService is UnityBuildPipelineService))
-            {
-                return Task.FromResult(ExecuteBuildPlayerCore(options, profile));
-            }
-
-            var syncContext = SynchronizationContext.Current;
-            if (Application.isBatchMode || syncContext == null)
-            {
-                return Task.FromResult(ExecuteBuildPlayerCore(options, profile));
-            }
-
-            var tcs = new TaskCompletionSource<BuildPlayerResult>();
-
-            syncContext.Post(_ =>
-            {
-                try
-                {
-                    var buildResult = ExecuteBuildPlayerCore(options, profile);
-                    tcs.SetResult(buildResult);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            }, null);
-
-            return tcs.Task;
         }
 
         private static BuildPlayerResult ExecuteBuildPlayerCore(

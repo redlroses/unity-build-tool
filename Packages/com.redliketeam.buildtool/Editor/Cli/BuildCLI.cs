@@ -231,25 +231,33 @@ namespace BuildTool.Editor
         /// </summary>
         public static T WaitForTask<T>(Func<Task<T>> taskFactory)
         {
-            var task = taskFactory();
-            if (task.IsCompleted)
+            BuildTool.SynchronousWaitDepth++;
+            try
             {
+                var task = taskFactory();
+                if (task.IsCompleted)
+                {
+                    return task.GetAwaiter().GetResult();
+                }
+
+                var start = DateTime.UtcNow;
+                while (!task.IsCompleted)
+                {
+                    PumpSynchronizationContext();
+                    Thread.Sleep(5);
+                    if ((DateTime.UtcNow - start).TotalHours > 12)
+                    {
+                        throw new TimeoutException("Task execution timed out in WaitForTask.");
+                    }
+                }
+
+                PumpSynchronizationContext();
                 return task.GetAwaiter().GetResult();
             }
-
-            var start = DateTime.UtcNow;
-            while (!task.IsCompleted)
+            finally
             {
-                PumpSynchronizationContext();
-                Thread.Sleep(5);
-                if ((DateTime.UtcNow - start).TotalHours > 12)
-                {
-                    throw new TimeoutException("Task execution timed out in WaitForTask.");
-                }
+                BuildTool.SynchronousWaitDepth--;
             }
-
-            PumpSynchronizationContext();
-            return task.GetAwaiter().GetResult();
         }
 
         /// <summary>

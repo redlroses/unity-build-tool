@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using BuildTool.Editor.Notifications;
 using BuildTool.Editor.Pipeline;
 using UnityEditor;
 using UnityEditor.Build.Profile;
@@ -15,10 +16,14 @@ namespace BuildTool.Editor.Tests
     {
         private MockBuildPipelineService _mockPipeline;
         private string _tempTestDir;
+        private bool _origNotificationsMasterEnabled;
 
         [SetUp]
         public void SetUp()
         {
+            _origNotificationsMasterEnabled = BuildNotificationSettings.MasterEnabled;
+            BuildNotificationSettings.MasterEnabled = false;
+
             _mockPipeline = new MockBuildPipelineService();
             BuildTool.PipelineService = _mockPipeline;
 
@@ -34,11 +39,13 @@ namespace BuildTool.Editor.Tests
         [TearDown]
         public void TearDown()
         {
+            BuildPipelineRunner.ClearActiveSession();
             BuildTool.ResetPipelineService();
             BuildTool.RegisterRemoteHandler = null;
             BuildTool.RegisterLocalHandler = null;
             BuildTool.FinalizeRemoteReportHandler = null;
             BuildTool.DisposeHandler = null;
+            BuildNotificationSettings.MasterEnabled = _origNotificationsMasterEnabled;
 
             if (Directory.Exists(_tempTestDir))
             {
@@ -298,6 +305,8 @@ namespace BuildTool.Editor.Tests
                 Assert.IsFalse(result.Success);
                 Assert.AreEqual(1, result.FailedProfiles);
                 Assert.AreEqual(0, result.SucceededProfiles);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(result.ErrorMessage));
+                Assert.IsTrue(result.ErrorMessage.Contains("Profile_Fail"));
                 Assert.AreEqual(
                     1, _mockPipeline.Invocations.Count, "Second profile should be aborted due to Fail-Fast");
             }
@@ -341,6 +350,7 @@ namespace BuildTool.Editor.Tests
                 Assert.IsFalse(result.Success, "Overall result should be false when at least one profile fails");
                 Assert.AreEqual(1, result.FailedProfiles);
                 Assert.AreEqual(1, result.SucceededProfiles);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(result.ErrorMessage));
                 Assert.AreEqual(
                     2, _mockPipeline.Invocations.Count, "Both profiles should run when ContinueOnError is true");
             }
@@ -381,6 +391,8 @@ namespace BuildTool.Editor.Tests
                 Assert.IsFalse(result.Success);
                 Assert.AreEqual(1, result.FailedProfiles);
                 Assert.AreEqual("Failed", result.Results[0].Result);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(result.ErrorMessage));
+                Assert.IsTrue(result.ErrorMessage.Contains("Fatal disk read error"));
             }
             finally
             {
@@ -510,6 +522,7 @@ namespace BuildTool.Editor.Tests
 
                 Assert.IsFalse(result.Success);
                 Assert.AreEqual(1, result.FailedProfiles);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(result.ErrorMessage));
             }
             finally
             {
@@ -545,6 +558,103 @@ namespace BuildTool.Editor.Tests
             Assert.IsTrue(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "AssetsBuilds")));
             Assert.IsTrue(BuildPipelineRunner.IsSafeDirectoryToClear(Path.Combine(projectRoot, "Build", "Release")));
             Assert.IsTrue(BuildPipelineRunner.IsSafeDirectoryToClear(_tempTestDir));
+        }
+
+        [Test]
+        public async Task RunAsync_MultipleProfiles_ClearsActiveSessionOnCompletion()
+        {
+            var profile1 = ScriptableObject.CreateInstance<BuildProfile>();
+            profile1.name = "Profile_Session1";
+
+            var profile2 = ScriptableObject.CreateInstance<BuildProfile>();
+            profile2.name = "Profile_Session2";
+
+            try
+            {
+                var req = new BuildExecutionRequest
+                {
+                    Profiles = { profile1, profile2 },
+                    RootBuildPathOverride = _tempTestDir,
+                    OpenFolder = false
+                };
+
+                var result = await BuildPipelineRunner.RunAsync(req);
+
+                Assert.IsTrue(result.Success);
+                Assert.IsFalse(BuildPipelineRunner.IsBuildRunning);
+                Assert.IsFalse(BuildPipelineRunner.HasActiveSession());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(profile1);
+                UnityEngine.Object.DestroyImmediate(profile2);
+            }
+        }
+
+        [Test]
+        public void FormatSummaryTable_FromSummaries_FormatsProfileRows()
+        {
+            var result = new BuildExecutionResult
+            {
+                RootBuildPath = _tempTestDir,
+                Results =
+                {
+                    new BuildExecutionResult.ProfileResultSummary
+                    {
+                        ProfileName = "Linux Standalone",
+                        Result = "Succeeded",
+                        DurationSeconds = 12.5,
+                        TotalSize = 1048576,
+                        TotalErrors = 0
+                    },
+                    new BuildExecutionResult.ProfileResultSummary
+                    {
+                        ProfileName = "Windows Server",
+                        Result = "Failed",
+                        DurationSeconds = 3.2,
+                        TotalSize = 2048,
+                        TotalErrors = 2
+                    }
+                }
+            };
+
+            var table = BuildReportFormatter.FormatSummaryTable(result.Results, _tempTestDir);
+
+            Assert.IsTrue(table.Contains("Linux Standalone"));
+            Assert.IsTrue(table.Contains("Succeeded"));
+            Assert.IsTrue(table.Contains("1.00 MB") || table.Contains("1,00 MB"));
+            Assert.IsTrue(table.Contains("Windows Server"));
+            Assert.IsTrue(table.Contains("Failed"));
+        }
+
+        [Test]
+        public void FormatBatchFromSummaries_WithSavedLog_IncludesHeaderAndLogContent()
+        {
+            var logFile = Path.Combine(_tempTestDir, "BuildReport_TestProfile.log");
+            File.WriteAllText(logFile, "BUILD REPORT: TestProfile (StandaloneWindows64)");
+
+            var result = new BuildExecutionResult
+            {
+                Success = true,
+                TotalProfiles = 1,
+                SucceededProfiles = 1,
+                RootBuildPath = _tempTestDir,
+                Results =
+                {
+                    new BuildExecutionResult.ProfileResultSummary
+                    {
+                        ProfileName = "TestProfile",
+                        Result = "Succeeded",
+                        DurationSeconds = 5.0,
+                        TotalSize = 4096
+                    }
+                }
+            };
+
+            var batch = BuildReportFormatter.FormatBatchFromSummaries(result, new[] { logFile });
+
+            Assert.IsTrue(batch.Contains("BATCH BUILD EXECUTION SUMMARY"));
+            Assert.IsTrue(batch.Contains("BUILD REPORT: TestProfile (StandaloneWindows64)"));
         }
     }
 }

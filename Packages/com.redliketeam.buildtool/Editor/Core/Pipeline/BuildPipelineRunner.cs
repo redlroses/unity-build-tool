@@ -14,6 +14,7 @@ using BuildTool.Tracking.Editor;
 using UnityEditor;
 using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
+using UnityEditorInternal;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -21,6 +22,294 @@ namespace BuildTool.Editor.Pipeline
 {
     public static class BuildPipelineRunner
     {
+        private const string ActiveSessionKey = "BuildTool.BuildPipelineRunner.ActiveSession";
+        private static bool s_IsRunning;
+        private static bool s_ResumeScheduled;
+        private static bool s_KeepAliveActive;
+        private static bool s_KeepAlivePumpPlayerLoop;
+        private static readonly Stopwatch s_KeepAliveStopwatch = new();
+
+        public static bool IsBuildRunning => s_IsRunning || HasActiveSession();
+        public static event Action SessionStateChanged;
+        public static event Action<BuildExecutionResult, bool> SessionCompleted;
+
+        [Serializable]
+        private class BuildSessionState
+        {
+            public bool IsDevelopment;
+            public bool CleanBuild;
+            public bool RegisterVersion;
+            public bool OpenFolder;
+            public bool ContinueOnError;
+            public string RootBuildPathOverride;
+            public string FullBuildPath;
+            public string BuildIndex;
+            public int OriginalTargetGroup;
+            public long StartedUtcTicks;
+            public int NextIndex;
+            public int TotalProfiles;
+            public int SucceededProfiles;
+            public int FailedProfiles;
+            public int CancelledProfiles;
+            public string ErrorMessage;
+            public List<string> ProfileAssetPaths = new();
+            public List<string> ProfileInitialNames = new();
+            public List<BuildExecutionResult.ProfileResultSummary> Results = new();
+            public List<string> SavedReportFiles = new();
+            public List<string> AddressablesBuiltTargets = new();
+            public List<SerializedKeyValue> ExtensionArgs = new();
+        }
+
+        [Serializable]
+        private class SerializedKeyValue
+        {
+            public string Key;
+            public string Value;
+        }
+
+        internal static bool HasActiveSession()
+        {
+            return !string.IsNullOrEmpty(SessionState.GetString(ActiveSessionKey, string.Empty));
+        }
+
+        internal static void ClearActiveSession()
+        {
+            SessionState.EraseString(ActiveSessionKey);
+        }
+
+        private static void SaveSessionState(BuildSessionState state)
+        {
+            if (state == null)
+            {
+                ClearActiveSession();
+                return;
+            }
+
+            SessionState.SetString(ActiveSessionKey, JsonUtility.ToJson(state));
+        }
+
+        private static BuildSessionState LoadSessionState()
+        {
+            var json = SessionState.GetString(ActiveSessionKey, string.Empty);
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonUtility.FromJson<BuildSessionState>(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool CanPersistAcrossDomainReload(IReadOnlyList<string> profileAssetPaths)
+        {
+            return BuildTool.ShouldDeferToEditorDelayCall &&
+                   profileAssetPaths != null &&
+                   profileAssetPaths.Count > 1 &&
+                   profileAssetPaths.All(p => !string.IsNullOrEmpty(p));
+        }
+
+        private static void StartBackgroundTickKeepAlive(bool pumpPlayerLoop = false)
+        {
+            if (!BuildTool.ShouldDeferToEditorDelayCall)
+            {
+                return;
+            }
+
+            s_KeepAlivePumpPlayerLoop = pumpPlayerLoop;
+            if (s_KeepAliveActive)
+            {
+                return;
+            }
+
+            s_KeepAliveActive = true;
+            s_KeepAliveStopwatch.Restart();
+            EditorApplication.update += OnBackgroundKeepAliveTick;
+            BuildTool.RequestEditorTick();
+        }
+
+        private static void StopBackgroundTickKeepAlive()
+        {
+            s_KeepAlivePumpPlayerLoop = false;
+            if (!s_KeepAliveActive)
+            {
+                return;
+            }
+
+            s_KeepAliveActive = false;
+            EditorApplication.update -= OnBackgroundKeepAliveTick;
+            s_KeepAliveStopwatch.Stop();
+        }
+
+        private static void OnBackgroundKeepAliveTick()
+        {
+            if (InternalEditorUtility.isApplicationActive || s_KeepAliveStopwatch.ElapsedMilliseconds < 150)
+            {
+                return;
+            }
+
+            s_KeepAliveStopwatch.Restart();
+            BuildTool.RequestEditorTick();
+            if (s_KeepAlivePumpPlayerLoop)
+            {
+                EditorApplication.QueuePlayerLoopUpdate();
+            }
+        }
+
+        [InitializeOnLoadMethod]
+        private static void TryResumeBuildSessionOnReload()
+        {
+            if (Application.isBatchMode || s_ResumeScheduled || !HasActiveSession())
+            {
+                return;
+            }
+
+            s_ResumeScheduled = true;
+            var cleanTicks = 0;
+            var settleStopwatch = Stopwatch.StartNew();
+
+            void WaitForReady()
+            {
+                BuildTool.RequestEditorTickThrottled(150);
+
+                if (EditorApplication.isCompiling ||
+                    EditorApplication.isUpdating ||
+                    BuildTool.IsScriptReloadRequested())
+                {
+                    cleanTicks = 0;
+                    settleStopwatch.Restart();
+                    return;
+                }
+
+                cleanTicks++;
+                if (cleanTicks < 3 || settleStopwatch.ElapsedMilliseconds < 500)
+                {
+                    return;
+                }
+
+                EditorApplication.update -= WaitForReady;
+                s_ResumeScheduled = false;
+
+                var session = LoadSessionState();
+                if (session == null)
+                {
+                    ClearActiveSession();
+                    StopBackgroundTickKeepAlive();
+                    SessionStateChanged?.Invoke();
+                    return;
+                }
+
+                _ = ResumeSessionAsync(session);
+            }
+
+            EditorApplication.update += WaitForReady;
+            BuildTool.RequestEditorTick();
+        }
+
+        private static async Task ResumeSessionAsync(BuildSessionState session)
+        {
+            try
+            {
+                var request = new BuildExecutionRequest
+                {
+                    IsDevelopment = session.IsDevelopment,
+                    CleanBuild = session.CleanBuild,
+                    ClearFolderFirst = false,
+                    RegisterVersion = session.RegisterVersion,
+                    OpenFolder = session.OpenFolder,
+                    ContinueOnError = session.ContinueOnError,
+                    RootBuildPathOverride = session.RootBuildPathOverride
+                };
+
+                if (session.ExtensionArgs != null)
+                {
+                    foreach (var arg in session.ExtensionArgs)
+                    {
+                        if (!string.IsNullOrEmpty(arg?.Key))
+                        {
+                            request.SetExtensionArg(arg.Key, arg.Value);
+                        }
+                    }
+                }
+
+                var profiles = new List<BuildProfile>();
+                var profileAssetPaths = new List<string>();
+                var profileInitialNames = new List<string>();
+
+                var count = session.ProfileAssetPaths?.Count ?? 0;
+                for (var i = 0; i < count; i++)
+                {
+                    var assetPath = session.ProfileAssetPaths[i];
+                    var profile = !string.IsNullOrEmpty(assetPath)
+                        ? AssetDatabase.LoadAssetAtPath<BuildProfile>(assetPath)
+                        : null;
+                    profiles.Add(profile);
+                    profileAssetPaths.Add(assetPath);
+                    var initialName = session.ProfileInitialNames != null && i < session.ProfileInitialNames.Count
+                        ? session.ProfileInitialNames[i]
+                        : BuildReportFormatter.GetSafeProfileName(profile);
+                    profileInitialNames.Add(initialName);
+                }
+
+                var result = new BuildExecutionResult
+                {
+                    TotalProfiles = session.TotalProfiles > 0 ? session.TotalProfiles : profiles.Count,
+                    SucceededProfiles = session.SucceededProfiles,
+                    FailedProfiles = session.FailedProfiles,
+                    CancelledProfiles = session.CancelledProfiles,
+                    RootBuildPath = session.FullBuildPath,
+                    BuildIndex = session.BuildIndex,
+                    ErrorMessage = session.ErrorMessage,
+                    Results = session.Results ?? new List<BuildExecutionResult.ProfileResultSummary>()
+                };
+
+                var savedReportFiles = session.SavedReportFiles != null
+                    ? new List<string>(session.SavedReportFiles)
+                    : new List<string>();
+
+                var initialAddressablesTargets = session.AddressablesBuiltTargets != null &&
+                                                 session.AddressablesBuiltTargets.Count > 0
+                    ? new HashSet<string>(session.AddressablesBuiltTargets)
+                    : null;
+
+                var originalTargetGroup = (BuildTargetGroup)session.OriginalTargetGroup;
+                BuildTool.ActiveRunRegisterOverride = request.RegisterVersion;
+
+                Debug.Log(
+                    $"[BuildPipelineRunner] Resuming sequential build after domain reload " +
+                    $"({session.NextIndex + 1}/{result.TotalProfiles})...");
+
+                await ExecuteSequenceAsync(
+                    request,
+                    profiles,
+                    profileAssetPaths,
+                    profileInitialNames,
+                    result,
+                    savedReportFiles,
+                    session.FullBuildPath,
+                    session.BuildIndex,
+                    originalTargetGroup,
+                    session.StartedUtcTicks,
+                    session.NextIndex,
+                    initialAddressablesTargets,
+                    wasResumed: true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[BuildPipelineRunner] Failed to resume sequential build session: {ex.Message}");
+                ClearActiveSession();
+                StopBackgroundTickKeepAlive();
+                BuildTool.ActiveRunRegisterOverride = null;
+                BuildTool.Dispose();
+                SessionStateChanged?.Invoke();
+            }
+        }
+
         public static async Task<BuildExecutionResult> RunAsync(BuildExecutionRequest request)
         {
             if (request == null)
@@ -28,7 +317,6 @@ namespace BuildTool.Editor.Pipeline
                 throw new ArgumentNullException(nameof(request));
             }
 
-            var stopwatch = Stopwatch.StartNew();
             var profiles = ResolveProfiles(request);
 
             if (profiles.Count == 0)
@@ -43,40 +331,46 @@ namespace BuildTool.Editor.Pipeline
                 TotalProfiles = profiles.Count
             };
 
-            var context = new BuildContext(request)
-            {
-                Profiles = profiles
-            };
-
-            var reports = new List<(BuildProfile Profile, BuildReport Report)>();
             var originalTargetGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
+            var startedUtcTicks = DateTime.UtcNow.Ticks;
+            var delegatedToSequence = false;
             BuildTool.ActiveRunRegisterOverride = request.RegisterVersion;
+            s_IsRunning = true;
+            SessionStateChanged?.Invoke();
 
             try
             {
-                if (BuildTool.IsTrackingEnabled)
+                StartBackgroundTickKeepAlive(pumpPlayerLoop: true);
+                try
                 {
-                    if (request.RegisterVersion)
+                    if (BuildTool.IsTrackingEnabled)
                     {
-                        Debug.Log("[BuildPipelineRunner] Registering build version remotely...");
-                        await BuildTool.RegisterRemote();
+                        if (request.RegisterVersion)
+                        {
+                            Debug.Log("[BuildPipelineRunner] Registering build version remotely...");
+                            await BuildTool.RegisterRemote();
+                        }
+                        else
+                        {
+                            Debug.Log("[BuildPipelineRunner] Registering build version locally...");
+                            await BuildTool.RegisterLocal();
+                        }
                     }
                     else
                     {
-                        Debug.Log("[BuildPipelineRunner] Registering build version locally...");
-                        await BuildTool.RegisterLocal();
+                        if (request.RegisterVersion && BuildTool.RegisterRemoteHandler != null)
+                        {
+                            await BuildTool.RegisterRemote();
+                        }
+                        else if (!request.RegisterVersion && BuildTool.RegisterLocalHandler != null)
+                        {
+                            await BuildTool.RegisterLocal();
+                        }
                     }
                 }
-                else
+                finally
                 {
-                    if (request.RegisterVersion && BuildTool.RegisterRemoteHandler != null)
-                    {
-                        await BuildTool.RegisterRemote();
-                    }
-                    else if (!request.RegisterVersion && BuildTool.RegisterLocalHandler != null)
-                    {
-                        await BuildTool.RegisterLocal();
-                    }
+                    StopBackgroundTickKeepAlive();
                 }
 
                 var buildPath = !string.IsNullOrWhiteSpace(request.RootBuildPathOverride)
@@ -101,39 +395,333 @@ namespace BuildTool.Editor.Pipeline
                     DeleteFilesAndDirectories(fullBuildPath);
                 }
 
-                context.RootBuildPath = fullBuildPath;
-                context.BuildIndex = BuildTool.LastBuildIndex;
+                var buildIndex = BuildTool.LastBuildIndex;
                 result.RootBuildPath = fullBuildPath;
-                result.BuildIndex = context.BuildIndex;
+                result.BuildIndex = buildIndex;
 
-                var (preprocessors, postprocessors) = DiscoverAndInitExtensions(context);
-
-                var profileDescriptors = profiles.Select(p => new
-                {
-                    AssetPath = AssetDatabase.GetAssetPath(p),
-                    InitialName = BuildReportFormatter.GetSafeProfileName(p)
-                }).ToList();
+                var profileAssetPaths = profiles.Select(p => AssetDatabase.GetAssetPath(p)).ToList();
+                var profileInitialNames = profiles.Select(p => BuildReportFormatter.GetSafeProfileName(p)).ToList();
 
                 EditorUtility.ClearProgressBar();
 
-                for (var i = 0; i < profiles.Count; i++)
+                delegatedToSequence = true;
+                return await ExecuteSequenceAsync(
+                    request,
+                    profiles,
+                    profileAssetPaths,
+                    profileInitialNames,
+                    result,
+                    new List<string>(),
+                    fullBuildPath,
+                    buildIndex,
+                    originalTargetGroup,
+                    startedUtcTicks,
+                    0,
+                    null,
+                    wasResumed: false);
+            }
+            catch (Exception ex)
+            {
+                result.TotalSeconds = Math.Max(
+                    0.0,
+                    (DateTime.UtcNow - new DateTime(startedUtcTicks, DateTimeKind.Utc)).TotalSeconds);
+                result.Success = false;
+                result.ErrorMessage = ex.Message;
+                Debug.LogError($"[BuildPipelineRunner] Build sequence cancelled due to error: {ex.Message}");
+
+                await FinalizeFailureTrackingAndNotificationsAsync(
+                    request,
+                    result,
+                    null,
+                    ex,
+                    result.TotalSeconds,
+                    wasResumed: false);
+
+                return result;
+            }
+            finally
+            {
+                if (!delegatedToSequence)
                 {
-                    var descriptor = profileDescriptors[i];
+                    s_IsRunning = false;
+                    StopBackgroundTickKeepAlive();
+                    ClearActiveSession();
+                    BuildTool.ActiveRunRegisterOverride = null;
+                    if (EditorUserBuildSettings.selectedBuildTargetGroup != originalTargetGroup &&
+                        originalTargetGroup != BuildTargetGroup.Unknown)
+                    {
+                        EditorUserBuildSettings.selectedBuildTargetGroup = originalTargetGroup;
+                    }
+                    BuildTool.Dispose();
+                    SessionStateChanged?.Invoke();
+                }
+            }
+        }
+
+        private static BuildSessionState CreateSessionStateSnapshot(
+            BuildExecutionRequest request,
+            BuildExecutionResult result,
+            BuildContext context,
+            string fullBuildPath,
+            string buildIndex,
+            BuildTargetGroup originalTargetGroup,
+            long startedUtcTicks,
+            int nextIndex,
+            List<string> profileAssetPaths,
+            List<string> profileInitialNames,
+            List<string> savedReportFiles)
+        {
+            var addressablesBuiltTargets = context?.GetState<HashSet<string>>("addressables_built_targets");
+            var extensionArgs = new List<SerializedKeyValue>();
+            if (request.ExtensionArgs != null)
+            {
+                foreach (var kvp in request.ExtensionArgs)
+                {
+                    extensionArgs.Add(new SerializedKeyValue
+                    {
+                        Key = kvp.Key,
+                        Value = kvp.Value
+                    });
+                }
+            }
+
+            return new BuildSessionState
+            {
+                IsDevelopment = request.IsDevelopment,
+                CleanBuild = request.CleanBuild,
+                RegisterVersion = request.RegisterVersion,
+                OpenFolder = request.OpenFolder,
+                ContinueOnError = request.ContinueOnError,
+                RootBuildPathOverride = request.RootBuildPathOverride,
+                FullBuildPath = fullBuildPath,
+                BuildIndex = buildIndex,
+                OriginalTargetGroup = (int)originalTargetGroup,
+                StartedUtcTicks = startedUtcTicks,
+                NextIndex = nextIndex,
+                TotalProfiles = result.TotalProfiles,
+                SucceededProfiles = result.SucceededProfiles,
+                FailedProfiles = result.FailedProfiles,
+                CancelledProfiles = result.CancelledProfiles,
+                ErrorMessage = result.ErrorMessage,
+                ProfileAssetPaths = new List<string>(profileAssetPaths),
+                ProfileInitialNames = new List<string>(profileInitialNames),
+                Results = new List<BuildExecutionResult.ProfileResultSummary>(result.Results),
+                SavedReportFiles = new List<string>(savedReportFiles),
+                AddressablesBuiltTargets = addressablesBuiltTargets != null
+                    ? new List<string>(addressablesBuiltTargets)
+                    : new List<string>(),
+                ExtensionArgs = extensionArgs
+            };
+        }
+
+        private static Task<bool> WaitForDomainReloadOrCleanStateAsync()
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            var stopwatch = Stopwatch.StartNew();
+            var refreshTriggered = false;
+            var reloadRequested = false;
+            var cleanTicks = 0;
+
+            void Tick()
+            {
+                BuildTool.RequestEditorTickThrottled(150);
+
+                if (!refreshTriggered)
+                {
+                    refreshTriggered = true;
+                    if (!EditorApplication.isCompiling && !EditorApplication.isUpdating)
+                    {
+                        AssetDatabase.Refresh();
+                    }
+                    return;
+                }
+
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+                {
+                    cleanTicks = 0;
+                    if (stopwatch.Elapsed.TotalSeconds > 30.0)
+                    {
+                        EditorApplication.update -= Tick;
+                        tcs.TrySetResult(false);
+                    }
+                    return;
+                }
+
+                if (BuildTool.IsScriptReloadRequested())
+                {
+                    cleanTicks = 0;
+                    if (!reloadRequested)
+                    {
+                        reloadRequested = true;
+                        EditorUtility.RequestScriptReload();
+                    }
+                    if (stopwatch.Elapsed.TotalSeconds > 30.0)
+                    {
+                        EditorApplication.update -= Tick;
+                        tcs.TrySetResult(false);
+                    }
+                    return;
+                }
+
+                cleanTicks++;
+                if (cleanTicks >= 3)
+                {
+                    EditorApplication.update -= Tick;
+                    tcs.TrySetResult(true);
+                }
+            }
+
+            EditorApplication.update += Tick;
+            BuildTool.RequestEditorTick();
+            return tcs.Task;
+        }
+
+        private static async Task FinalizeFailureTrackingAndNotificationsAsync(
+            BuildExecutionRequest request,
+            BuildExecutionResult result,
+            List<(BuildProfile Profile, BuildReport Report)> reports,
+            Exception ex,
+            double elapsedSeconds,
+            bool wasResumed)
+        {
+            StartBackgroundTickKeepAlive(pumpPlayerLoop: true);
+            try
+            {
+#if BUILDTOOL_TRACKING
+                if (request.RegisterVersion)
+                {
+                    try
+                    {
+                        var failureReport =
+                            $"BUILD FAILED WITH EXCEPTION.\n" +
+                            $"Error: {ex.Message}\n" +
+                            $"Duration: {TimeSpan.FromSeconds(elapsedSeconds):mm\\:ss}\n" +
+                            "Stack Trace:\n" +
+                            $"{ex.StackTrace}";
+                        if (BuildTool.FinalizeRemoteReportHandler != null)
+                        {
+                            await BuildTool.FinalizeRemoteReportHandler(failureReport);
+                        }
+                        else
+                        {
+                            await BuildTracker.FinalizeRemoteBuildReport(failureReport);
+                        }
+                    }
+                    catch (Exception reportEx)
+                    {
+                        Debug.LogWarning(
+                            $"[BuildPipelineRunner] Failed to record failure report: {reportEx.Message}");
+                    }
+                }
+#endif
+
+                var notifReports = reports != null && reports.Count == result.Results.Count ? reports : null;
+                var batchContext = new BuildBatchNotificationContext(result, notifReports);
+                try
+                {
+                    await BuildNotificationManager.DispatchBatchAsync(batchContext);
+                }
+                catch (Exception notifEx)
+                {
+                    Debug.LogWarning($"[BuildPipelineRunner] Failed to dispatch notifications: {notifEx.Message}");
+                }
+            }
+            finally
+            {
+                StopBackgroundTickKeepAlive();
+            }
+
+            SessionCompleted?.Invoke(result, wasResumed);
+        }
+
+        private static async Task<BuildExecutionResult> ExecuteSequenceAsync(
+            BuildExecutionRequest request,
+            List<BuildProfile> profiles,
+            List<string> profileAssetPaths,
+            List<string> profileInitialNames,
+            BuildExecutionResult result,
+            List<string> savedReportFiles,
+            string fullBuildPath,
+            string buildIndex,
+            BuildTargetGroup originalTargetGroup,
+            long startedUtcTicks,
+            int startIndex,
+            HashSet<string> initialAddressablesTargets,
+            bool wasResumed)
+        {
+            var reports = new List<(BuildProfile Profile, BuildReport Report)>();
+            var handedOffToReload = false;
+
+            s_IsRunning = true;
+            SessionStateChanged?.Invoke();
+
+            try
+            {
+                var context = new BuildContext(request)
+                {
+                    Profiles = profiles,
+                    RootBuildPath = fullBuildPath,
+                    BuildIndex = buildIndex
+                };
+
+                if (initialAddressablesTargets != null && initialAddressablesTargets.Count > 0)
+                {
+                    context.SetState("addressables_built_targets", initialAddressablesTargets);
+                }
+
+                var (preprocessors, postprocessors) = DiscoverAndInitExtensions(context);
+                var persistable = CanPersistAcrossDomainReload(profileAssetPaths);
+
+                for (var i = startIndex; i < profiles.Count; i++)
+                {
+                    if (persistable && BuildTool.IsScriptReloadRequested())
+                    {
+                        var snapshot = CreateSessionStateSnapshot(
+                            request,
+                            result,
+                            context,
+                            fullBuildPath,
+                            buildIndex,
+                            originalTargetGroup,
+                            startedUtcTicks,
+                            i,
+                            profileAssetPaths,
+                            profileInitialNames,
+                            savedReportFiles);
+                        SaveSessionState(snapshot);
+                        handedOffToReload = true;
+
+                        var preReady = await WaitForDomainReloadOrCleanStateAsync();
+                        if (!preReady)
+                        {
+                            handedOffToReload = false;
+                            var timeoutMsg =
+                                "Timed out waiting for Unity domain reload to complete before continuing sequential build.";
+                            Debug.LogError($"[BuildPipelineRunner] {timeoutMsg}");
+                            if (string.IsNullOrEmpty(result.ErrorMessage))
+                            {
+                                result.ErrorMessage = timeoutMsg;
+                            }
+                            break;
+                        }
+
+                        handedOffToReload = false;
+                    }
+
+                    var assetPath = i < profileAssetPaths.Count ? profileAssetPaths[i] : null;
+                    var initialName = i < profileInitialNames.Count ? profileInitialNames[i] : "Profile";
                     var profile = profiles[i];
 
-                    if (profile == null || !profile)
+                    if ((profile == null || !profile) && !string.IsNullOrEmpty(assetPath))
                     {
-                        if (!string.IsNullOrEmpty(descriptor.AssetPath))
-                        {
-                            profile = AssetDatabase.LoadAssetAtPath<BuildProfile>(descriptor.AssetPath);
-                            profiles[i] = profile;
-                        }
+                        profile = AssetDatabase.LoadAssetAtPath<BuildProfile>(assetPath);
+                        profiles[i] = profile;
                     }
 
                     var profileName = BuildReportFormatter.GetSafeProfileName(profile);
                     if (string.IsNullOrEmpty(profileName) || profileName == "Profile")
                     {
-                        profileName = descriptor.InitialName;
+                        profileName = initialName;
                     }
 
                     context.CurrentProfile = profile;
@@ -147,6 +735,10 @@ namespace BuildTool.Editor.Pipeline
                             "Add scenes to Build Profile or Editor Build Settings.";
                         Debug.LogError($"[BuildPipelineRunner] {errorMsg}");
                         result.FailedProfiles++;
+                        if (string.IsNullOrEmpty(result.ErrorMessage))
+                        {
+                            result.ErrorMessage = errorMsg;
+                        }
                         result.Results.Add(new BuildExecutionResult.ProfileResultSummary
                         {
                             ProfileName = profileName,
@@ -178,9 +770,15 @@ namespace BuildTool.Editor.Pipeline
                         options |= BuildOptions.CleanBuildCache;
                     }
 
+                    var targetBefore = EditorUserBuildSettings.activeBuildTarget;
+                    var subtargetBefore = EditorUserBuildSettings.standaloneBuildSubtarget;
+                    var profileTarget = BuildTool.GetBuildTarget(profile);
+                    var profileSubtarget = BuildTool.GetStandaloneBuildSubtarget(profile);
+
                     BuildPlayerResult buildResult;
                     try
                     {
+                        StopBackgroundTickKeepAlive();
                         buildResult = await BuildTool.ExecuteBuildFromProfile(
                             profile, options, fullBuildPath, preprocessors, postprocessors);
                     }
@@ -189,6 +787,10 @@ namespace BuildTool.Editor.Pipeline
                         Debug.LogError(
                             $"[BuildPipelineRunner] Exception during build of profile '{profileName}': {ex.Message}");
                         result.FailedProfiles++;
+                        if (string.IsNullOrEmpty(result.ErrorMessage))
+                        {
+                            result.ErrorMessage = $"Exception during build of profile '{profileName}': {ex.Message}";
+                        }
                         result.Results.Add(new BuildExecutionResult.ProfileResultSummary
                         {
                             ProfileName = profileName,
@@ -219,6 +821,7 @@ namespace BuildTool.Editor.Pipeline
                                 profile, buildResult.Report, fullBuildPath, profileName);
                             if (!string.IsNullOrEmpty(logFile))
                             {
+                                savedReportFiles.Add(logFile);
                                 Debug.Log($"[BuildPipelineRunner] Saved profile build log: {logFile}");
                             }
                         }
@@ -235,6 +838,12 @@ namespace BuildTool.Editor.Pipeline
                         else
                         {
                             result.FailedProfiles++;
+                        }
+
+                        if (!isSucceeded && string.IsNullOrEmpty(result.ErrorMessage))
+                        {
+                            result.ErrorMessage =
+                                $"Build for profile '{profileName}' ended with status '{buildResult.Result}'.";
                         }
 
                         result.Results.Add(new BuildExecutionResult.ProfileResultSummary
@@ -259,6 +868,10 @@ namespace BuildTool.Editor.Pipeline
                     else
                     {
                         result.FailedProfiles++;
+                        if (string.IsNullOrEmpty(result.ErrorMessage))
+                        {
+                            result.ErrorMessage = $"Build result for profile '{profileName}' is null.";
+                        }
                         result.Results.Add(new BuildExecutionResult.ProfileResultSummary
                         {
                             ProfileName = profileName,
@@ -274,11 +887,64 @@ namespace BuildTool.Editor.Pipeline
                             break;
                         }
                     }
+
+                    if (i + 1 < profiles.Count && persistable)
+                    {
+                        var targetChanged =
+                            EditorUserBuildSettings.activeBuildTarget != targetBefore ||
+                            EditorUserBuildSettings.standaloneBuildSubtarget != subtargetBefore ||
+                            profileTarget != targetBefore ||
+                            profileSubtarget != subtargetBefore;
+                        var reloadNeeded =
+                            targetChanged ||
+                            BuildTool.IsScriptReloadRequested() ||
+                            EditorApplication.isCompiling ||
+                            EditorApplication.isUpdating;
+
+                        var snapshot = CreateSessionStateSnapshot(
+                            request,
+                            result,
+                            context,
+                            fullBuildPath,
+                            buildIndex,
+                            originalTargetGroup,
+                            startedUtcTicks,
+                            i + 1,
+                            profileAssetPaths,
+                            profileInitialNames,
+                            savedReportFiles);
+                        SaveSessionState(snapshot);
+
+                        if (reloadNeeded)
+                        {
+                            handedOffToReload = true;
+                            Debug.Log(
+                                $"[BuildPipelineRunner] Waiting for Unity script compilation/domain reload " +
+                                $"before profile {i + 2}/{profiles.Count}...");
+
+                            var ready = await WaitForDomainReloadOrCleanStateAsync();
+                            if (!ready)
+                            {
+                                handedOffToReload = false;
+                                var timeoutMsg =
+                                    "Timed out waiting for Unity domain reload to complete before continuing sequential build.";
+                                Debug.LogError($"[BuildPipelineRunner] {timeoutMsg}");
+                                if (string.IsNullOrEmpty(result.ErrorMessage))
+                                {
+                                    result.ErrorMessage = timeoutMsg;
+                                }
+                                break;
+                            }
+
+                            handedOffToReload = false;
+                        }
+                    }
                 }
 
+                var allReportsInMemory = reports.Count == result.Results.Count && reports.Count > 0;
                 result.Reports = reports;
 
-                if (reports.Count > 0)
+                if (allReportsInMemory)
                 {
                     var summaryTable = BuildReportFormatter.FormatSummaryTable(reports, fullBuildPath);
                     Debug.Log(summaryTable);
@@ -288,117 +954,127 @@ namespace BuildTool.Editor.Pipeline
                         Debug.Log(BuildReportFormatter.FormatBatch(reports, fullBuildPath));
                     }
                 }
-
-#if BUILDTOOL_TRACKING
-                if (request.RegisterVersion)
+                else if (result.Results.Count > 0)
                 {
-                    string fullReport;
-                    if (reports.Count > 0)
-                    {
-                        fullReport = BuildReportFormatter.FormatBatch(reports, fullBuildPath, includeAllFiles: true);
-                    }
-                    else
-                    {
-                        fullReport =
-                            $"BUILD FAILED OR CANCELLED.\n" +
-                            $"Status: Failed (0 successful profiles out of {profiles.Count}).\n" +
-                            $"Duration: {stopwatch.Elapsed:mm\\:ss}";
-                    }
+                    var summaryTable = BuildReportFormatter.FormatSummaryTable(result.Results, fullBuildPath);
+                    Debug.Log(summaryTable);
 
-                    if (BuildTool.FinalizeRemoteReportHandler != null)
+                    if (result.Results.Count > 1)
                     {
-                        await BuildTool.FinalizeRemoteReportHandler(fullReport);
-                    }
-                    else
-                    {
-                        await BuildTracker.FinalizeRemoteBuildReport(fullReport);
+                        Debug.Log(BuildReportFormatter.FormatBatchFromSummaries(result, savedReportFiles));
                     }
                 }
-#endif
 
-                if (request.OpenFolder && !string.IsNullOrWhiteSpace(fullBuildPath))
-                {
-                    OpenFolderInExplorer(fullBuildPath);
-                }
-
-                stopwatch.Stop();
-                result.TotalSeconds = stopwatch.Elapsed.TotalSeconds;
+                var elapsedSeconds = Math.Max(
+                    0.0,
+                    (DateTime.UtcNow - new DateTime(startedUtcTicks, DateTimeKind.Utc)).TotalSeconds);
+                result.TotalSeconds = elapsedSeconds;
                 result.Success = result.FailedProfiles == 0 && result.SucceededProfiles == profiles.Count;
+                if (!result.Success && string.IsNullOrEmpty(result.ErrorMessage))
+                {
+                    result.ErrorMessage =
+                        $"Build sequence finished with {result.FailedProfiles} failed and " +
+                        $"{result.CancelledProfiles} cancelled profiles out of {result.TotalProfiles}.";
+                }
 
-                Debug.Log(
-                    "<color=yellow>[BuildPipelineRunner] Sequence completed: " +
-                    $"{result.SucceededProfiles}/{result.TotalProfiles} " +
-                    $"succeeded in {result.TotalSeconds:F1}s.</color>");
-
-                var batchContext = new BuildBatchNotificationContext(result, reports);
+                StartBackgroundTickKeepAlive(pumpPlayerLoop: true);
                 try
                 {
-                    await BuildNotificationManager.DispatchBatchAsync(batchContext);
+#if BUILDTOOL_TRACKING
+                    if (request.RegisterVersion)
+                    {
+                        string fullReport;
+                        if (allReportsInMemory)
+                        {
+                            fullReport = BuildReportFormatter.FormatBatch(reports, fullBuildPath, includeAllFiles: true);
+                        }
+                        else if (result.Results.Count > 0)
+                        {
+                            fullReport = BuildReportFormatter.FormatBatchFromSummaries(result, savedReportFiles);
+                        }
+                        else
+                        {
+                            fullReport =
+                                $"BUILD FAILED OR CANCELLED.\n" +
+                                $"Status: Failed (0 successful profiles out of {profiles.Count}).\n" +
+                                $"Duration: {TimeSpan.FromSeconds(elapsedSeconds):mm\\:ss}";
+                        }
+
+                        if (BuildTool.FinalizeRemoteReportHandler != null)
+                        {
+                            await BuildTool.FinalizeRemoteReportHandler(fullReport);
+                        }
+                        else
+                        {
+                            await BuildTracker.FinalizeRemoteBuildReport(fullReport);
+                        }
+                    }
+#endif
+
+                    if (request.OpenFolder && !string.IsNullOrWhiteSpace(fullBuildPath))
+                    {
+                        OpenFolderInExplorer(fullBuildPath);
+                    }
+
+                    Debug.Log(
+                        "<color=yellow>[BuildPipelineRunner] Sequence completed: " +
+                        $"{result.SucceededProfiles}/{result.TotalProfiles} " +
+                        $"succeeded in {result.TotalSeconds:F1}s.</color>");
+
+                    var notifReports = reports.Count == result.Results.Count ? reports : null;
+                    var batchContext = new BuildBatchNotificationContext(result, notifReports);
+                    try
+                    {
+                        await BuildNotificationManager.DispatchBatchAsync(batchContext);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        Debug.LogWarning($"[BuildPipelineRunner] Failed to dispatch notifications: {notifEx.Message}");
+                    }
                 }
-                catch (Exception notifEx)
+                finally
                 {
-                    Debug.LogWarning($"[BuildPipelineRunner] Failed to dispatch notifications: {notifEx.Message}");
+                    StopBackgroundTickKeepAlive();
                 }
 
+                SessionCompleted?.Invoke(result, wasResumed);
                 return result;
             }
             catch (Exception ex)
             {
-                stopwatch.Stop();
-                result.TotalSeconds = stopwatch.Elapsed.TotalSeconds;
+                result.TotalSeconds = Math.Max(
+                    0.0,
+                    (DateTime.UtcNow - new DateTime(startedUtcTicks, DateTimeKind.Utc)).TotalSeconds);
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
                 Debug.LogError($"[BuildPipelineRunner] Build sequence cancelled due to error: {ex.Message}");
 
-#if BUILDTOOL_TRACKING
-                if (request.RegisterVersion)
-                {
-                    try
-                    {
-                        var failureReport =
-                            $"BUILD FAILED WITH EXCEPTION.\n" +
-                            $"Error: {ex.Message}\n" +
-                            $"Duration: {stopwatch.Elapsed:mm\\:ss}\n" +
-                            "Stack Trace:\n" +
-                            $"{ex.StackTrace}";
-                        if (BuildTool.FinalizeRemoteReportHandler != null)
-                        {
-                            await BuildTool.FinalizeRemoteReportHandler(failureReport);
-                        }
-                        else
-                        {
-                            await BuildTracker.FinalizeRemoteBuildReport(failureReport);
-                        }
-                    }
-                    catch (Exception reportEx)
-                    {
-                        Debug.LogWarning(
-                            $"[BuildPipelineRunner] Failed to record failure report: {reportEx.Message}");
-                    }
-                }
-#endif
-
-                var batchContext = new BuildBatchNotificationContext(result, reports);
-                try
-                {
-                    await BuildNotificationManager.DispatchBatchAsync(batchContext);
-                }
-                catch (Exception notifEx)
-                {
-                    Debug.LogWarning($"[BuildPipelineRunner] Failed to dispatch notifications: {notifEx.Message}");
-                }
+                await FinalizeFailureTrackingAndNotificationsAsync(
+                    request,
+                    result,
+                    reports,
+                    ex,
+                    result.TotalSeconds,
+                    wasResumed);
 
                 return result;
             }
             finally
             {
-                BuildTool.ActiveRunRegisterOverride = null;
-                if (EditorUserBuildSettings.selectedBuildTargetGroup != originalTargetGroup &&
-                    originalTargetGroup != BuildTargetGroup.Unknown)
+                s_IsRunning = false;
+                StopBackgroundTickKeepAlive();
+                if (!handedOffToReload)
                 {
-                    EditorUserBuildSettings.selectedBuildTargetGroup = originalTargetGroup;
+                    ClearActiveSession();
+                    BuildTool.ActiveRunRegisterOverride = null;
+                    if (EditorUserBuildSettings.selectedBuildTargetGroup != originalTargetGroup &&
+                        originalTargetGroup != BuildTargetGroup.Unknown)
+                    {
+                        EditorUserBuildSettings.selectedBuildTargetGroup = originalTargetGroup;
+                    }
+                    BuildTool.Dispose();
                 }
-                BuildTool.Dispose();
+                SessionStateChanged?.Invoke();
             }
         }
 

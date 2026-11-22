@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using BuildTool.Editor.Pipeline;
 using UnityEditor;
 using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
@@ -142,6 +143,100 @@ namespace BuildTool.Editor
                 sb.AppendLine();
             }
 
+            return sb.ToString();
+        }
+
+        public static string FormatBatchFromSummaries(
+            BuildExecutionResult result,
+            IEnumerable<string> savedLogFiles = null)
+        {
+            if (result?.Results == null || result.Results.Count == 0)
+            {
+                return "[BuildReport] No build reports to format.";
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("================================================================================");
+            sb.AppendLine(" BATCH BUILD EXECUTION SUMMARY");
+            sb.AppendLine("================================================================================");
+            sb.AppendLine($"  Root Path:     {result.RootBuildPath}");
+            sb.AppendLine($"  Total Builds:  {result.Results.Count}");
+            sb.AppendLine($"  Succeeded:     {result.SucceededProfiles}");
+            sb.AppendLine($"  Failed:        {result.FailedProfiles}");
+            sb.AppendLine($"  Cancelled:     {result.CancelledProfiles}");
+
+            var totalDuration = TimeSpan.FromSeconds(result.Results.Sum(r => r != null ? r.DurationSeconds : 0.0));
+            var totalSize = (ulong)result.Results.Sum(r => r != null ? (long)r.TotalSize : 0L);
+
+            sb.AppendLine($"  Total Time:    {FormatDuration(totalDuration)}");
+            sb.AppendLine($"  Combined Size: {FormatBytes(totalSize)}");
+            sb.AppendLine("================================================================================");
+            sb.AppendLine();
+
+            var appendedLog = false;
+            if (savedLogFiles != null)
+            {
+                foreach (var logFile in savedLogFiles)
+                {
+                    if (string.IsNullOrWhiteSpace(logFile) || !File.Exists(logFile))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        sb.AppendLine(File.ReadAllText(logFile));
+                        sb.AppendLine();
+                        appendedLog = true;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            if (!appendedLog)
+            {
+                sb.AppendLine(FormatSummaryTable(result.Results, result.RootBuildPath));
+            }
+
+            return sb.ToString();
+        }
+
+        public static string FormatSummaryTable(
+            IEnumerable<BuildExecutionResult.ProfileResultSummary> summaries,
+            string rootBuildPath = null)
+        {
+            var list = summaries?.Where(s => s != null).ToList() ??
+                       new List<BuildExecutionResult.ProfileResultSummary>();
+
+            if (list.Count == 0)
+            {
+                return "No build reports available.";
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("--------------------------------------------------------------------------------");
+            sb.AppendLine($"{"Profile",-28} | {"Status",-9} | {"Duration",-9} | {"Size",-10} | {"Errors",-6}");
+            sb.AppendLine("--------------------------------------------------------------------------------");
+
+            foreach (var summary in list)
+            {
+                var name = string.IsNullOrWhiteSpace(summary.ProfileName) ? "Profile" : summary.ProfileName.Trim();
+                if (name.Length > 28)
+                {
+                    name = name.Substring(0, 25) + "...";
+                }
+
+                var status = string.IsNullOrEmpty(summary.Result) ? "Unknown" : summary.Result;
+                var dur = FormatDuration(TimeSpan.FromSeconds(summary.DurationSeconds));
+                var size = FormatBytes(summary.TotalSize);
+                var errs = summary.TotalErrors.ToString();
+
+                sb.AppendLine($"{name,-28} | {status,-9} | {dur,-9} | {size,-10} | {errs,-6}");
+            }
+
+            sb.AppendLine("--------------------------------------------------------------------------------");
             return sb.ToString();
         }
 

@@ -15,7 +15,7 @@ namespace BuildTool.Editor
     {
         public const string WindowTitle = "Welcome to Build Tool";
         public static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Welcome/BuildToolWelcomeWindow.uss");
-        public const string DefaultVersion = "1.0.1";
+        public const string DefaultVersion = "1.0.2";
         public const string ShowOnUpdatePrefKey = "build_tool_welcome_show_on_update";
         public const string ShowOnStartPrefKey = "build_tool_welcome_show_on_startup";
         public const string LastVersionPrefKey = "build_tool_welcome_last_version";
@@ -35,7 +35,7 @@ namespace BuildTool.Editor
         private const string GitRepoUrl = "https://github.com/redlroses/unity-build-tool";
         private const string GitIssuesUrl = "https://github.com/redlroses/unity-build-tool/issues";
         private const string GitPackageUrl =
-            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.1";
+            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2";
 
         internal enum WelcomeTab
         {

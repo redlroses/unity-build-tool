@@ -318,7 +318,7 @@ namespace BuildTool.Editor
 
                 var patternField = new TextField("Pattern")
                 {
-                    value = patternBuilder.RawPattern ?? PatternLocationPathBuilder.DefaultPattern
+                    value = patternBuilder.Pattern
                 };
                 patternField.AddToClassList("buildtool-field-flex");
                 patternRow.Add(patternField);
@@ -356,6 +356,10 @@ namespace BuildTool.Editor
                 customToggle.RegisterValueChangedCallback(evt =>
                 {
                     patternBuilder.UseCustomPattern = evt.newValue;
+                    if (evt.newValue)
+                    {
+                        patternBuilder.RawPattern = patternField.value;
+                    }
                     patternRow.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None;
                     EditorUtility.SetDirty(settings);
                     settings.Save();

@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- Headers should be listed in this order: Added, Changed, Deprecated, Removed, Fixed, Security -->
 
+## [1.0.2] - 2026-11-22
+### Added
+- Added `GitRepositoryUrlOverride` setting (`BuildTrackingSettings`) for configuring external Git tracking repositories.
+- Added domain-reload-resilient sequential build session persistence and automatic resumption (`BuildPipelineRunner`) with assembly reload locking and compilation waiting between builds.
+- Added `BuildReportFormatter.FormatBatchFromSummaries` and `FormatSummaryTable` overload for formatting batch build summaries across domain reloads.
+- Added shared HTTP proxy resolution (Windows IE/environment variables) and `SendWithRetryAsync` with transient error/status handling in `NotificationChannelBase`.
+
+### Changed
+- Updated `PatternLocationPathBuilder.DefaultPattern` format to `{ProfileName} v{Version}.{BuildIndex}/{ProductName}` (and `{ProfileName} v{Version}/{ProductName}` without tracking).
+- Improved `GitRepository` process execution to default `GIT_SSL_BACKEND=openssl` when unset, added `NormalizeGitUrl`, and added retry logic for Git tracking repository preparation.
+- Updated `TelegramNotificationChannel` to use shared `NotificationChannelBase.SendWithRetryAsync`.
+- Updated `BuildToolWizardWindow.uss` badge and button group layout (`flex-shrink: 0`, `margin-left: auto`).
+
+### Removed
+- Removed **Push Retry Attempts** and **Push Retry Delay (ms)** fields from `BuildTrackingSettingsProvider` UI (kept code-configurable in `BuildTrackingSettings`).
+
+### Fixed
+- Fixed `BuildWindow` scroll position resetting to the top on window focus and UI rebuilds, and synchronized `BuildWindow` state with active `BuildPipelineRunner` sessions.
+- Fixed `BuildToolSettingsProvider` custom pattern initialization to use `patternBuilder.Pattern` and sync `RawPattern` when toggling custom pattern mode.
+- Fixed `BuildCLI.WaitForTask` synchronous wait depth tracking (`BuildTool.SynchronousWaitDepth`), player loop build execution, error reporting, and tracking retry handling.
+- Fixed `BuildTrackingSettingsProvider` lambda parameter name collision and test isolation in `BuildCLITests`, `BuildNotificationTests`, `BuildPipelineRunnerTests`, `BuildToolTests`, and `BuildTrackingSettingsTests`.
+
 ## [1.0.1] - 2026-11-20
 ### Changed
 - Improved `BuildPipelineRunner.IsSafeDirectoryToClear` to block parent directories of the project root and protected project folders (`.git`, `Library`, `UserSettings`, `Temp`, `Logs`).

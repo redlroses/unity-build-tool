@@ -147,7 +147,21 @@ namespace BuildTool.Tracking.Editor
                 var trackingGit = new GitRepository(BuildTrackingSettings.RepositoryPath, s_Config.IsLogging);
 
                 ProgressBarHandler.StepUpdate("Validating commit code...");
-                var commit = await projectGit.GetCurrentShortCommitCode();
+                var commit = "none";
+                if (projectGit.HasRepository())
+                {
+                    try
+                    {
+                        commit = await projectGit.GetCurrentShortCommitCode();
+                    }
+                    catch (Exception ex)
+                    {
+                        if (s_Config.IsLogging)
+                        {
+                            Debug.LogWarning($"[BuildTracker] Failed to get short commit code: {ex.Message}");
+                        }
+                    }
+                }
 
                 ProgressBarHandler.StepUpdate("Validating tracking date...");
                 var dateUtc = DateTime.UtcNow.ToString(DateFormat);
@@ -237,13 +251,28 @@ namespace BuildTool.Tracking.Editor
             try
             {
                 var trackingBranchName = s_Config.GetBranchName();
-                var hasProjectOrigin = await projectGit.HasOrigin();
-                var trackingRepoUrl = hasProjectOrigin ? await projectGit.GetRepositoryUrl() : string.Empty;
+                var trackingRepoUrl = await s_Config.GetTrackingRepositoryUrl(projectGit);
+                var hasRemoteTracking = !string.IsNullOrEmpty(trackingRepoUrl);
 
                 await EnsureTrackingBranchExists(trackingGit, projectGit, trackingRepoUrl, trackingBranchName);
-                await PrepareTrackingRepository(trackingGit, trackingRepoUrl, trackingBranchName, !hasProjectOrigin);
+                await PrepareTrackingRepository(trackingGit, trackingRepoUrl, trackingBranchName, !hasRemoteTracking);
 
-                var projectBranch = await projectGit.GetCurrentBranch();
+                var projectBranch = "main";
+                if (projectGit != null && projectGit.HasRepository())
+                {
+                    try
+                    {
+                        projectBranch = await projectGit.GetCurrentBranch();
+                    }
+                    catch (Exception ex)
+                    {
+                        if (s_Config.IsLogging)
+                        {
+                            Debug.LogWarning($"[BuildTracker] Failed to get current branch: {ex.Message}");
+                        }
+                    }
+                }
+
                 var appVersion = Application.version;
                 var commitMessage = $"{projectBranch}:{commit} v{appVersion}";
 
@@ -259,17 +288,10 @@ namespace BuildTool.Tracking.Editor
                         ProgressBarHandler.StepUpdate(
                             $"Creating and pushing build tracking info (attempt {attempt}/{attempts})...");
 
-                        if (attempt > 1 && hasProjectOrigin)
+                        if (attempt > 1 && hasRemoteTracking)
                         {
                             await trackingGit.Fetch();
-                            if (s_Config.KeepSingleCommit)
-                            {
-                                await trackingGit.ResetToRemote(trackingBranchName);
-                            }
-                            else
-                            {
-                                await trackingGit.Pull(trackingBranchName);
-                            }
+                            await trackingGit.ResetToRemote(trackingBranchName);
                         }
 
                         var currentBuildIndex = await IncrementBuildIndexAndRecordHistory(
@@ -287,12 +309,12 @@ namespace BuildTool.Tracking.Editor
                                 messageWithBuildIndex,
                                 "-A");
 
-                            await trackingGit.PushForceWithLease(trackingBranchName, isLocal: !hasProjectOrigin);
+                            await trackingGit.PushForceWithLease(trackingBranchName, isLocal: !hasRemoteTracking);
                         }
                         else
                         {
                             await trackingGit.Commit(messageWithBuildIndex, "-A");
-                            await trackingGit.Push(trackingBranchName, isLocal: !hasProjectOrigin);
+                            await trackingGit.Push(trackingBranchName, isLocal: !hasRemoteTracking);
                         }
 
                         return currentBuildIndex;
@@ -340,7 +362,7 @@ namespace BuildTool.Tracking.Editor
             {
                 hasBranch = false;
             }
-            else if (projectGit != null && await projectGit.HasRemoteRepository(repositoryUrl))
+            else if (projectGit != null && projectGit.HasRepository() && await projectGit.HasRemoteRepository(repositoryUrl))
             {
                 var attempts = Math.Max(1, s_Config.PushRetryAttempts);
                 var delayMs = Math.Max(100, s_Config.PushRetryDelayMs);
@@ -424,43 +446,53 @@ namespace BuildTool.Tracking.Editor
                     "Making sure the tracking branch exists: Creating a tracking branch in the repository...");
                 GitRepository.CleanupDirectory(BuildTrackingSettings.RepositoryPath);
 
-                GitRepository tempGit = new(BuildTrackingSettings.InitialRepositoryPath, s_Config.IsLogging);
-                await tempGit.Init();
-
-                await tempGit.SendCommand($"remote add remote-repo \"{repositoryUrl}\"",
-                    "Added remote repository",
-                    "Failed to add remote repository");
-
-                await tempGit.CreateBranch(branchName);
-                await tempGit.Commit("Initial");
-
-                var attempts = Math.Max(1, s_Config.PushRetryAttempts);
-                var delayMs = Math.Max(100, s_Config.PushRetryDelayMs);
-
-                for (var attempt = 1; attempt <= attempts; attempt++)
+                try
                 {
-                    try
-                    {
-                        await tempGit.SendCommand($"push remote-repo {branchName}",
-                            "Pushed to remote repository",
-                            "Failed to push to remote repository");
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (attempt == attempts)
-                        {
-                            throw;
-                        }
+                    GitRepository tempGit = new(BuildTrackingSettings.InitialRepositoryPath, s_Config.IsLogging);
+                    await tempGit.Init();
 
-                        Debug.LogWarning(
-                            $"[BuildTracker] Initial branch push attempt {attempt}/{attempts} failed: " +
-                            $"{ex.Message}. Retrying in {delayMs}ms...");
-                        await Task.Delay(delayMs);
+                    await tempGit.SendCommand($"remote add remote-repo \"{repositoryUrl}\"",
+                        "Added remote repository",
+                        "Failed to add remote repository");
+
+                    await tempGit.CreateBranch(branchName);
+                    await tempGit.Commit("Initial");
+
+                    var attempts = Math.Max(1, s_Config.PushRetryAttempts);
+                    var delayMs = Math.Max(100, s_Config.PushRetryDelayMs);
+
+                    for (var attempt = 1; attempt <= attempts; attempt++)
+                    {
+                        try
+                        {
+                            await tempGit.SendCommand($"push remote-repo {branchName}",
+                                "Pushed to remote repository",
+                                "Failed to push to remote repository");
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            if (attempt == attempts)
+                            {
+                                throw;
+                            }
+
+                            Debug.LogWarning(
+                                $"[BuildTracker] Initial branch push attempt {attempt}/{attempts} failed: " +
+                                $"{ex.Message}. Retrying in {delayMs}ms...");
+                            await Task.Delay(delayMs);
+                        }
                     }
                 }
+                finally
+                {
+                    GitRepository.CleanupDirectory(BuildTrackingSettings.InitialRepositoryPath);
+                }
 
-                await AutoIgnoreBranchIfFirstCreated(projectGit, branchName);
+                if (projectGit != null && projectGit.HasRepository() && await projectGit.HasOrigin() && await projectGit.HasRemoteRepository(repositoryUrl))
+                {
+                    await AutoIgnoreBranchIfFirstCreated(projectGit, branchName);
+                }
             }
             else
             {
@@ -496,44 +528,86 @@ namespace BuildTool.Tracking.Editor
         {
             ProgressBarHandler.Update("Preparing tracking repository...");
 
+            var attempts = Math.Max(1, s_Config.PushRetryAttempts);
+            var delayMs = Math.Max(100, s_Config.PushRetryDelayMs);
+
+            var isFreshClone = false;
+
             if (!isLocal && !await trackingGit.HasRemoteRepository(repositoryUrl))
             {
                 ProgressBarHandler.StepUpdate("Preparing tracking repository: Cloning single branch...");
-                GitRepository.CleanupDirectory(BuildTrackingSettings.RepositoryPath);
-                await trackingGit.CloneSingleBranch(repositoryUrl, projectBranch);
+
+                for (var attempt = 1; attempt <= attempts; attempt++)
+                {
+                    try
+                    {
+                        GitRepository.CleanupDirectory(BuildTrackingSettings.RepositoryPath);
+                        await trackingGit.CloneSingleBranch(repositoryUrl, projectBranch);
+                        isFreshClone = true;
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (attempt == attempts)
+                        {
+                            throw;
+                        }
+
+                        Debug.LogWarning(
+                            $"[BuildTracker] Clone attempt {attempt}/{attempts} failed: {ex.Message}. Retrying in {delayMs}ms...");
+                        await Task.Delay(delayMs);
+                    }
+                }
             }
             else
             {
                 ProgressBarHandler.Step();
             }
 
-            if (!isLocal)
+            if (!isLocal && !isFreshClone)
             {
                 ProgressBarHandler.StepUpdate(
                     "Preparing tracking repository: Getting the previous build index...");
-                await trackingGit.Fetch();
-                await trackingGit.CheckoutBranch(projectBranch);
+
+                for (var attempt = 1; attempt <= attempts; attempt++)
+                {
+                    try
+                    {
+                        await trackingGit.Fetch();
+                        await trackingGit.CheckoutBranch(projectBranch);
+                        await trackingGit.ResetToRemote(projectBranch);
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (attempt == attempts)
+                        {
+                            throw;
+                        }
+
+                        Debug.LogWarning(
+                            $"[BuildTracker] Fetch tracking branch attempt {attempt}/{attempts} failed: {ex.Message}. Retrying in {delayMs}ms...");
+                        await Task.Delay(delayMs);
+                    }
+                }
             }
 
             bool hasBranch;
 
             if (isLocal)
             {
+                if (!trackingGit.HasRepository())
+                {
+                    await trackingGit.Init();
+                }
                 hasBranch = await trackingGit.HasLocalBranch(projectBranch);
             }
             else
             {
-                hasBranch = await trackingGit.HasOriginBranch(projectBranch);
+                hasBranch = isFreshClone || await trackingGit.HasLocalBranch(projectBranch);
             }
 
-            if (hasBranch)
-            {
-                if (!isLocal)
-                {
-                    await trackingGit.Pull(projectBranch);
-                }
-            }
-            else
+            if (!hasBranch)
             {
                 CreateBuildIndexJson();
             }
@@ -739,14 +813,7 @@ namespace BuildTool.Tracking.Editor
                         if (attempt > 1 && hasOrigin)
                         {
                             await trackingGit.Fetch();
-                            if (s_Config.KeepSingleCommit)
-                            {
-                                await trackingGit.ResetToRemote(trackingBranchName);
-                            }
-                            else
-                            {
-                                await trackingGit.Pull(trackingBranchName);
-                            }
+                            await trackingGit.ResetToRemote(trackingBranchName);
                         }
 
                         if (!Directory.Exists(reportsDir))

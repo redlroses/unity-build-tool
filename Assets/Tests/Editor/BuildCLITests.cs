@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using BuildTool.Editor.Notifications;
 using NUnit.Framework;
 using UnityEditor.Build.Profile;
 using UnityEngine;
@@ -11,10 +12,13 @@ namespace BuildTool.Editor.Tests
     public class BuildCLITests
     {
         private MockBuildPipelineService _mockPipeline;
+        private bool _origNotificationsMasterEnabled;
 
         [SetUp]
         public void SetUp()
         {
+            _origNotificationsMasterEnabled = BuildNotificationSettings.MasterEnabled;
+            BuildNotificationSettings.MasterEnabled = false;
             _mockPipeline = new MockBuildPipelineService();
             BuildTool.PipelineService = _mockPipeline;
             BuildTool.RegisterRemoteHandler = () => Task.CompletedTask;
@@ -29,6 +33,7 @@ namespace BuildTool.Editor.Tests
             BuildTool.RegisterRemoteHandler = null;
             BuildTool.RegisterLocalHandler = null;
             BuildTool.DisposeHandler = null;
+            BuildNotificationSettings.MasterEnabled = _origNotificationsMasterEnabled;
         }
 
         [Test]
@@ -189,6 +194,37 @@ namespace BuildTool.Editor.Tests
             {
                 UnityEngine.Object.DestroyImmediate(profile);
             }
+        }
+
+        [Test]
+        public void WaitForTask_SetsAndResetsSynchronousWaitDepth()
+        {
+            Assert.AreEqual(0, BuildTool.SynchronousWaitDepth);
+            var depthInsideTask = 0;
+
+            var value = BuildCLI.WaitForTask(async () =>
+            {
+                depthInsideTask = BuildTool.SynchronousWaitDepth;
+                await Task.Yield();
+                return 42;
+            });
+
+            Assert.AreEqual(42, value);
+            Assert.Greater(depthInsideTask, 0);
+            Assert.AreEqual(0, BuildTool.SynchronousWaitDepth);
+        }
+
+        [Test]
+        public void WaitForTask_WhenTaskThrows_ResetsSynchronousWaitDepth()
+        {
+            Assert.AreEqual(0, BuildTool.SynchronousWaitDepth);
+
+            Assert.Throws<InvalidOperationException>(() =>
+            {
+                BuildCLI.WaitForTask<int>(() => Task.FromException<int>(new InvalidOperationException("Boom")));
+            });
+
+            Assert.AreEqual(0, BuildTool.SynchronousWaitDepth);
         }
     }
 }

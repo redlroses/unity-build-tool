@@ -16,9 +16,9 @@ namespace BuildTool.Editor.DirectoryBuilders
     public class PatternLocationPathBuilder : SimpleLocationPathNameBuilder
     {
 #if BUILDTOOL_TRACKING
-        public const string DefaultPattern = "{ProfileName}_{Version}.{BuildIndex}/{ProductName}";
+        public const string DefaultPattern = "{ProfileName} v{Version}.{BuildIndex}/{ProductName}";
 #else
-        public const string DefaultPattern = "{ProfileName}_{Version}/{ProductName}";
+        public const string DefaultPattern = "{ProfileName} v{Version}/{ProductName}";
 #endif
 
         private static readonly ConcurrentDictionary<string, (Func<PathContext, string> resolver, string description)>

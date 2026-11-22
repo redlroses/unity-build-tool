@@ -27,14 +27,14 @@ An automation and pipeline orchestration tool for Unity that configures, execute
 2. Click **+** → **Add package from git URL...**
 3. Paste:
    ```text
-   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.1
+   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2
    ```
 
 Alternatively, add it directly to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.1"
+    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2"
   }
 }
 ```
@@ -383,6 +383,7 @@ Settings are stored in `ProjectSettings/BuildTrackingSettings.asset` and managed
 | Setting | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | **Project Branch Override** | `string` | `build-tracking` | Name of the remote Git tracking branch. Invalid ref characters (spaces, tildes, colons) are automatically sanitized. |
+| **Git Repository URL Override** | `string` | `""` *(empty)* | Optional remote Git repository URL for storing tracking commits and build reports (defaults to project repository). |
 | **Relative Git Path Override** | `string` | `""` *(empty)* | Relative path to repository root if the Unity project is located in a subfolder of a monorepo (e.g. `src/UnityClient`). |
 | **Keep Single Commit (Force Push)** | `bool` | `true` | When enabled, replaces the tracking branch with a single orphan commit per build via `push --force-with-lease`. Eliminates commit accumulation. |
 | **Push Retry Attempts** | `int` | `3` | Maximum number of push retries when encountering network failures or push collisions. |

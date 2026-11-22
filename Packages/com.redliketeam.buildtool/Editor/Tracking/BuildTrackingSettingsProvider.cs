@@ -37,7 +37,8 @@ namespace BuildTool.Tracking.Editor
                 },
                 keywords = new HashSet<string>(new[]
                 {
-                    "Tracking", "Git", "Branch", "Override", "Refspec", "Optimization", "Commit", "Build"
+                    "Tracking", "Git", "Branch", "Override", "Refspec", "Optimization", "Commit", "Build",
+                    "Repository", "Remote", "URL"
                 })
             };
 
@@ -101,6 +102,22 @@ namespace BuildTool.Tracking.Editor
             });
             fieldsContainer.Add(branchField);
 
+            var repoUrlProp = serializedSettings.FindProperty(nameof(settings.GitRepositoryUrlOverride));
+            var repoUrlField = new PropertyField(repoUrlProp, "Git Repository URL Override")
+            {
+                tooltip = "Override remote Git repository URL for tracking commits (defaults to current project Git remote repository)."
+            };
+            repoUrlField.RegisterValueChangeCallback(evt =>
+            {
+                settings.Save();
+                if (string.IsNullOrWhiteSpace(settings.GitRepositoryUrlOverride) && !s_HasCheckedRefspec)
+                {
+                    _ = CheckBranchIgnoredStatus(settings, updateGitSection);
+                }
+                updateGitSection?.Invoke();
+            });
+            fieldsContainer.Add(repoUrlField);
+
             var pathProp = serializedSettings.FindProperty(nameof(settings.RelativeProjectGitPathOverride));
             var pathField = new PropertyField(pathProp, "Relative Git Path Override")
             {
@@ -116,22 +133,6 @@ namespace BuildTool.Tracking.Editor
             };
             keepSingleField.RegisterValueChangeCallback(_ => settings.Save());
             fieldsContainer.Add(keepSingleField);
-
-            var retriesProp = serializedSettings.FindProperty(nameof(settings.PushRetryAttempts));
-            var retriesField = new PropertyField(retriesProp, "Push Retry Attempts")
-            {
-                tooltip = "Number of retry attempts when pushing tracking commits fails."
-            };
-            retriesField.RegisterValueChangeCallback(_ => settings.Save());
-            fieldsContainer.Add(retriesField);
-
-            var delayProp = serializedSettings.FindProperty(nameof(settings.PushRetryDelayMs));
-            var delayField = new PropertyField(delayProp, "Push Retry Delay (ms)")
-            {
-                tooltip = "Delay in milliseconds between push retry attempts."
-            };
-            delayField.RegisterValueChangeCallback(_ => settings.Save());
-            fieldsContainer.Add(delayField);
 
             var historyProp = serializedSettings.FindProperty(nameof(settings.MaxHistoryEntries));
             var historyField = new PropertyField(historyProp, "Max History Entries (0 = unlimited)")
@@ -220,6 +221,16 @@ namespace BuildTool.Tracking.Editor
                     actionBtn.text = "Processing Git Configuration...";
                     actionBtn.SetEnabled(false);
                 }
+                else if (!string.IsNullOrWhiteSpace(settings.GitRepositoryUrlOverride))
+                {
+                    statusBanner.AddToClassList("tracking-status-active");
+                    statusBanner.text =
+                        $"External Repository Configured: Tracking commits are pushed to external repository:\n"
+                        + $"{settings.GitRepositoryUrlOverride.Trim()}\n"
+                        + "Local project Git fetch filtering is not needed.";
+                    actionBtn.text = "External Repository Configured";
+                    actionBtn.SetEnabled(false);
+                }
                 else if (!s_HasCheckedRefspec)
                 {
                     statusBanner.AddToClassList("tracking-status-pending");
@@ -283,7 +294,8 @@ namespace BuildTool.Tracking.Editor
                 }
             };
 
-            if (!s_HasCheckedRefspec && !s_IsOperating && !s_IsCheckingStatus)
+            if (string.IsNullOrWhiteSpace(settings.GitRepositoryUrlOverride) &&
+                !s_HasCheckedRefspec && !s_IsOperating && !s_IsCheckingStatus)
             {
                 _ = CheckBranchIgnoredStatus(settings, updateUI);
             }

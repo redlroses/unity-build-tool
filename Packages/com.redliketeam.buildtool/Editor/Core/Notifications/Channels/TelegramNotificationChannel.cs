@@ -282,55 +282,46 @@ namespace BuildTool.Editor.Notifications.Channels
             return System.Net.WebUtility.HtmlEncode(text);
         }
 
-        private static readonly HttpClient s_TelegramClient = new()
-        {
-            Timeout = TimeSpan.FromSeconds(20)
-        };
-
         private async Task<bool> SendMessageAsync(string token, string chatId, string message)
         {
-            try
-            {
-                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
-                var url = $"https://api.telegram.org/bot{token}/sendMessage";
-                var parameters = new Dictionary<string, string>
+            var url = $"https://api.telegram.org/bot{token}/sendMessage";
+            return await SendWithRetryAsync(
+                url,
+                () =>
                 {
-                    ["chat_id"] = chatId,
-                    ["text"] = message,
-                    ["parse_mode"] = "HTML"
-                };
-
-                using var formContent = new FormUrlEncodedContent(parameters);
-                using var response = await s_TelegramClient.PostAsync(url, formContent, cts.Token)
-                    .ConfigureAwait(false);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    var safeResult = System.Text.RegularExpressions.Regex.Replace(
-                        result, @"bot\d+:[a-zA-Z0-9_-]+", "bot[REDACTED]");
-                    if (!string.IsNullOrEmpty(token))
+                    var parameters = new Dictionary<string, string>
                     {
-                        safeResult = safeResult.Replace(token, "[REDACTED]");
-                    }
-                    Debug.LogWarning(
-                        $"[TelegramNotification] SendMessage to {chatId} failed ({response.StatusCode}): {safeResult}");
-                    return false;
-                }
+                        ["chat_id"] = chatId,
+                        ["text"] = message,
+                        ["parse_mode"] = "HTML"
+                    };
 
-                return true;
-            }
-            catch (Exception ex)
+                    return new HttpRequestMessage(HttpMethod.Post, url)
+                    {
+                        Content = new FormUrlEncodedContent(parameters)
+                    };
+                },
+                timeoutSeconds: 15,
+                maxAttempts: 3,
+                sanitize: text => RedactTelegramToken(text, token),
+                logPrefix: "TelegramNotification",
+                failureContext: $"SendMessage to {chatId}").ConfigureAwait(false);
+        }
+
+        private static string RedactTelegramToken(string text, string token)
+        {
+            if (string.IsNullOrEmpty(text))
             {
-                var safeError = System.Text.RegularExpressions.Regex.Replace(
-                    ex.Message, @"bot\d+:[a-zA-Z0-9_-]+", "bot[REDACTED]");
-                if (!string.IsNullOrEmpty(token))
-                {
-                    safeError = safeError.Replace(token, "[REDACTED]");
-                }
-                Debug.LogError($"[TelegramNotification] SendMessage error: {safeError}");
-                return false;
+                return string.Empty;
             }
+
+            var safe = System.Text.RegularExpressions.Regex.Replace(
+                text, @"bot\d+:[a-zA-Z0-9_-]+", "bot[REDACTED]");
+            if (!string.IsNullOrEmpty(token))
+            {
+                safe = safe.Replace(token, "[REDACTED]");
+            }
+            return safe;
         }
     }
 }

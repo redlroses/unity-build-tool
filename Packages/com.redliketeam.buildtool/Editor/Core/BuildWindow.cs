@@ -45,6 +45,10 @@ namespace BuildTool.Editor
         private VisualElement _linuxWarningContainer;
         private Label _profilesCountLabel;
         private ScrollView _scrollContainer;
+        private Vector2 _scrollOffset;
+        private bool _hasPendingScrollRestore;
+
+        private bool IsBuildActive => _isBuildInProcess || BuildPipelineRunner.IsBuildRunning;
 
         [MenuItem(TextContent.MenuItem)]
         public static void ShowWindow()
@@ -66,15 +70,27 @@ namespace BuildTool.Editor
             _registerSaveKey = BuildTool.RegisterSaveKey;
 #endif
             _selectedProfilesSaveKey = "build_tool_selected_profiles".AppendProjectName();
+            _hasPendingScrollRestore = false;
 
             LoadAllProfiles();
             LoadSettings();
             FindAndAddExtensions();
+
+            BuildPipelineRunner.SessionStateChanged -= OnBuildSessionStateChanged;
+            BuildPipelineRunner.SessionStateChanged += OnBuildSessionStateChanged;
+            BuildPipelineRunner.SessionCompleted -= OnBuildSessionCompleted;
+            BuildPipelineRunner.SessionCompleted += OnBuildSessionCompleted;
+        }
+
+        private void OnDisable()
+        {
+            BuildPipelineRunner.SessionStateChanged -= OnBuildSessionStateChanged;
+            BuildPipelineRunner.SessionCompleted -= OnBuildSessionCompleted;
         }
 
         private void OnFocus()
         {
-            if (_isBuildInProcess)
+            if (IsBuildActive)
             {
                 return;
             }
@@ -91,6 +107,11 @@ namespace BuildTool.Editor
 
         private void BuildUI()
         {
+            if (_scrollContainer != null && !_hasPendingScrollRestore)
+            {
+                _scrollOffset = _scrollContainer.scrollOffset;
+            }
+
             var root = rootVisualElement;
             root.Clear();
             root.AddToClassList("build-window-root");
@@ -114,6 +135,36 @@ namespace BuildTool.Editor
             BuildActionsCard(_scrollContainer);
 
             UpdateBuildButtonState();
+            RestoreScrollOffset();
+        }
+
+        private void RestoreScrollOffset()
+        {
+            if (_scrollOffset == Vector2.zero || _scrollContainer == null)
+            {
+                _hasPendingScrollRestore = false;
+                return;
+            }
+
+            _hasPendingScrollRestore = true;
+            var targetScrollView = _scrollContainer;
+            var targetOffset = _scrollOffset;
+
+            EventCallback<GeometryChangedEvent> onGeometryChanged = null;
+            onGeometryChanged = _ =>
+            {
+                if (targetScrollView.contentContainer.layout.height <= 0 ||
+                    targetScrollView.contentViewport.layout.height <= 0)
+                {
+                    return;
+                }
+
+                targetScrollView.contentContainer.UnregisterCallback(onGeometryChanged);
+                targetScrollView.scrollOffset = targetOffset;
+                _hasPendingScrollRestore = false;
+            };
+
+            targetScrollView.contentContainer.RegisterCallback(onGeometryChanged);
         }
 
         private void LoadStyleSheet(VisualElement root)
@@ -550,9 +601,10 @@ namespace BuildTool.Editor
                 _linuxWarningContainer.Add(switchLinuxBtn);
             }
 
-            _scrollContainer?.SetEnabled(!_isBuildInProcess);
+            var isBuilding = IsBuildActive;
+            _scrollContainer?.SetEnabled(!isBuilding);
 
-            if (_isBuildInProcess)
+            if (isBuilding)
             {
                 _buildButton.text = TextContent.BuildButtonText;
                 _buildButton.SetEnabled(false);
@@ -562,6 +614,32 @@ namespace BuildTool.Editor
                 _buildButton.text = TextContent.BtnBuild;
                 _buildButton.SetEnabled(hasSelected && !isLinuxMismatch);
             }
+        }
+
+        private void OnBuildSessionStateChanged()
+        {
+            UpdateBuildButtonState();
+        }
+
+        private void OnBuildSessionCompleted(BuildExecutionResult result, bool wasResumed)
+        {
+            if (wasResumed && result != null)
+            {
+                if (result.Success)
+                {
+                    Debug.Log(TextContent.MsgBuildComplete);
+                }
+                else
+                {
+                    var reason = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                        ? "Build failed. Check console for details."
+                        : result.ErrorMessage;
+                    Debug.LogError($"{TextContent.MsgBuildCancel}{reason}");
+                }
+            }
+
+            _isBuildInProcess = false;
+            UpdateBuildButtonState();
         }
 
         private void LoadSettings()
@@ -690,7 +768,10 @@ namespace BuildTool.Editor
                 }
                 else
                 {
-                    Debug.LogError($"{TextContent.MsgBuildCancel}{result.ErrorMessage}");
+                    var reason = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                        ? "Build failed. Check console for details."
+                        : result.ErrorMessage;
+                    Debug.LogError($"{TextContent.MsgBuildCancel}{reason}");
                 }
             }
             catch (Exception e)

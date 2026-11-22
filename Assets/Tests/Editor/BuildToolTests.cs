@@ -181,6 +181,16 @@ namespace BuildTool.Editor.Tests
                 }
             }
         }
+
+        [Test]
+        public void EditorTickAndReloadHelpers_DoNotThrow()
+        {
+            Assert.DoesNotThrow(() =>
+            {
+                BuildTool.RequestEditorTick();
+                _ = BuildTool.IsScriptReloadRequested();
+            });
+        }
     }
 }
 

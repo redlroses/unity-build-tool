@@ -154,7 +154,23 @@ namespace BuildTool.Tracking.Editor
                 "Remote origin from config received",
                 "Failed to receive remote origin from config")).Trim();
 
-            return string.Equals(originUrl, repoUrl.Trim(), StringComparison.OrdinalIgnoreCase);
+            return string.Equals(NormalizeGitUrl(originUrl), NormalizeGitUrl(repoUrl), StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string NormalizeGitUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return string.Empty;
+            }
+
+            var trimmed = url.Trim().TrimEnd('/', '\\');
+            if (trimmed.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+            {
+                trimmed = trimmed.Substring(0, trimmed.Length - 4);
+            }
+
+            return trimmed;
         }
 
         public bool HasRepository()
@@ -693,6 +709,10 @@ namespace BuildTool.Tracking.Editor
             processInfo.EnvironmentVariables["GIT_NON_INTERACTIVE_CHECK"] = "1";
             processInfo.EnvironmentVariables["GIT_SSH_COMMAND"] = "ssh -o BatchMode=yes";
             processInfo.EnvironmentVariables["GCM_INTERACTIVE"] = "never";
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GIT_SSL_BACKEND")))
+            {
+                processInfo.EnvironmentVariables["GIT_SSL_BACKEND"] = "openssl";
+            }
 
             return processInfo;
         }
