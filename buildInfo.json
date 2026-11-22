@@ -1,0 +1,117 @@
+﻿{
+  "lastBuildIndex": 16,
+  "history": [
+    {
+      "buildIndex": 1,
+      "dateUtc": "2026-11-04",
+      "commit": "f81f1c2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 2,
+      "dateUtc": "2026-11-04",
+      "commit": "f81f1c2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 3,
+      "dateUtc": "2026-11-04",
+      "commit": "f81f1c2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 4,
+      "dateUtc": "2026-11-04",
+      "commit": "f81f1c2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 5,
+      "dateUtc": "2026-11-04",
+      "commit": "f81f1c2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 6,
+      "dateUtc": "2026-11-04",
+      "commit": "f81f1c2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 7,
+      "dateUtc": "2026-11-22",
+      "commit": "bb414fc",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 8,
+      "dateUtc": "2026-11-22",
+      "commit": "a96d7fb",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 9,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 10,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 11,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 12,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 13,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 14,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 15,
+      "dateUtc": "2026-11-22",
+      "commit": "3d4f9e2",
+      "branch": "main",
+      "appVersion": "1.0"
+    },
+    {
+      "buildIndex": 16,
+      "dateUtc": "2026-11-22",
+      "commit": "5e67bc6",
+      "branch": "main",
+      "appVersion": "1.0"
+    }
+  ]
+}

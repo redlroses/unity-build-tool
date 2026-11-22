@@ -1,0 +1,470 @@
+﻿================================================================================
+ BATCH BUILD EXECUTION SUMMARY
+================================================================================
+  Root Path:     O:\Other Projects\unity-build-tool\Build\v1.0.12 2026-11-22 22-39
+  Total Builds:  7
+  Succeeded:     7
+  Failed:        0
+  Cancelled:     0
+  Total Time:    2m 52s
+  Combined Size: 2,06 GB
+================================================================================
+
+================================================================================
+ BUILD REPORT: WebGL (WebGL)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/WebGL_1.0.12/unity-build-tool
+  Total Size:    10,00 MB
+  Duration:      10,1s
+  Errors:        0
+  Warnings:      0
+  Built At:      2026-11-22 17:39:36 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       10,1s
+    * Preprocess Player                                   0,7s (1 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       4,1s
+      * Prebuild Cleanup and Recompile                      2,3s
+        * Compile scripts                                     2,3s
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,1s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,1s
+    * Prepare assets for target platform                  0,7s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,1s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,1s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Building Resources/unity_builtin_extra              0,1s
+    * Creating compressed player package                  0,4s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                            3,3s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                            3,2s
+      * Report output files                                 0,0s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [gz] unity-build-tool.wasm.gz                         7,97 MB
+    [gz] unity-build-tool.data.gz                         1,92 MB
+    [gz] unity-build-tool.framework.js.gz                 73,3 KB
+    [js] unity-build-tool.loader.js                       26,6 KB
+    [html] index.html                                        5,5 KB
+    [png] unity-logo-light.png                              3,0 KB
+    [png] unity-logo-dark.png                               3,0 KB
+    [ico] favicon.ico                                       2,3 KB
+    [png] webmemd-icon.png                                  1,6 KB
+    [css] style.css                                         1,4 KB
+    [png] unity-logo-title-footer.png                       1,1 KB
+    [png] MemoryProfiler.png                                 665 B
+    [png] fullscreen-button.png                              175 B
+    [png] progress-bar-empty-light.png                       109 B
+    [png] progress-bar-empty-dark.png                         96 B
+    ... and 2 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+ BUILD REPORT: Windows Server (StandaloneWindows64)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/Windows Server_1.0.12/unity-build-tool.exe
+  Total Size:    86,90 MB
+  Duration:      14,4s
+  Errors:        2
+  Warnings:      0
+  Built At:      2026-11-22 17:39:47 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       14,3s
+    * Preprocess Player                                   0,7s (1 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       6,9s
+      * Prebuild Cleanup and Recompile                      5,5s
+        * Compile scripts                                     5,4s (2 msgs)
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,0s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,0s
+    * Prepare assets for target platform                  0,6s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,1s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,1s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                            5,4s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                            5,3s
+      * Report output files                                 0,0s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [dll] UnityPlayer.dll                                 35,34 MB
+    [dll] mono-2.0-bdwgc.dll                               7,47 MB
+    [unity default resources] unity default resources                          5,61 MB
+    [dll] D3D12Core.dll                                    4,51 MB
+    [DependentManagedLibrary] mscorlib.dll                                     4,42 MB
+    [DependentManagedLibrary] System.Xml.dll                                   3,01 MB
+    [DependentManagedLibrary] System.dll                                       2,52 MB
+    [ManagedEngineAPI] UnityEngine.UIElementsModule.dll                 2,24 MB
+    [DependentManagedLibrary] System.Data.dll                                  2,03 MB
+    [ManagedEngineAPI] UnityEngine.CoreModule.dll                       1,88 MB
+    [exe] UnityCrashHandler64.exe                          1,65 MB
+    [dll] dstoragecore.dll                                 1,41 MB
+    [DependentManagedLibrary] System.Core.dll                                  1,06 MB
+    [DependentManagedLibrary] System.Runtime.Serialization.dll                912,5 KB
+    [ManagedEngineAPI] UnityEngine.MathematicsModule.dll               723,4 KB
+    ... and 143 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+ BUILD REPORT: Windows Standalone (StandaloneWindows64)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/Windows Standalone_1.0.12/unity-build-tool.exe
+  Total Size:    603,61 MB
+  Duration:      21,4s
+  Errors:        1
+  Warnings:      0
+  Built At:      2026-11-22 17:40:06 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       21,3s
+    * Preprocess Player                                   0,7s (2 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       8,1s
+      * Prebuild Cleanup and Recompile                      6,4s
+        * Compile scripts                                     6,0s
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,0s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,0s
+    * Prepare assets for target platform                  0,0s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,1s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,1s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Building Resources/unity_builtin_extra              0,1s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                           11,7s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                           11,5s
+      * Report output files                                 0,1s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [pdb] GameAssembly.pdb                               224,89 MB
+    [dll] UnityPlayer.dll                                 35,50 MB
+    [dll] GameAssembly.dll                                21,99 MB
+    [c] Il2CppGenericMethodPointerTable.c               12,78 MB
+    [cpp] Il2CppInvokerTable.cpp                           7,36 MB
+    [c] Il2CppTypeDefinitions.c                          7,00 MB
+    [unity default resources] unity default resources                          5,61 MB
+    [dll] D3D12Core.dll                                    4,51 MB
+    [dat] global-metadata.dat                              3,98 MB
+    [cpp] Generics__18.cpp                                 3,21 MB
+    [cpp] Il2CppCCalculateTypeValues.cpp                   3,04 MB
+    [cpp] GenericMethods__4.cpp                            2,90 MB
+    [cpp] GenericMethods__1.cpp                            2,78 MB
+    [StreamingResourceFile] globalgamemanagers.assets.resS                   2,67 MB
+    [c] Il2CppGenericInstDefinitions.c                   2,63 MB
+    ... and 365 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+ BUILD REPORT: Linux Standalone (StandaloneLinux64)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/Linux Standalone_1.0.12/unity-build-tool.x86_64
+  Total Size:    596,39 MB
+  Duration:      15,0s
+  Errors:        1
+  Warnings:      0
+  Built At:      2026-11-22 17:40:32 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       14,9s
+    * Preprocess Player                                   0,8s (2 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       6,4s
+      * Prebuild Cleanup and Recompile                      6,1s
+        * Compile scripts                                     6,0s
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,0s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,0s
+    * Prepare assets for target platform                  0,7s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,1s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,1s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Building Resources/unity_builtin_extra              0,2s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                            6,2s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                            6,0s
+      * Report output files                                 0,1s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [debug] GameAssembly.debug                             194,88 MB
+    [so] UnityPlayer.so                                  40,32 MB
+    [so] GameAssembly.so                                 36,78 MB
+    [c] Il2CppGenericMethodPointerTable.c               12,80 MB
+    [cpp] Il2CppInvokerTable.cpp                           7,39 MB
+    [c] Il2CppTypeDefinitions.c                          7,00 MB
+    [debug] UnityPlayer_s.debug                              6,45 MB
+    [unity default resources] unity default resources                          5,61 MB
+    [dat] global-metadata.dat                              3,98 MB
+    [dat] global-metadata.dat                              3,98 MB
+    [cpp] Generics__18.cpp                                 3,21 MB
+    [cpp] Il2CppCCalculateTypeValues.cpp                   3,05 MB
+    [cpp] GenericMethods__4.cpp                            2,90 MB
+    [cpp] GenericMethods__1.cpp                            2,78 MB
+    [StreamingResourceFile] globalgamemanagers.assets.resS                   2,67 MB
+    ... and 367 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+ BUILD REPORT: Android XR (Android)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/Android XR_1.0.12/unity-build-tool.apk
+  Total Size:    366,40 MB
+  Duration:      57,9s
+  Errors:        0
+  Warnings:      5
+  Built At:      2026-11-22 17:40:52 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       57,8s
+    * Preprocess Player                                   0,8s (1 msgs)
+    * Prepare For Build                                  23,5s (2 msgs)
+    * ProducePlayerScriptAssemblies                       3,3s
+      * Prebuild Cleanup and Recompile                      3,0s
+        * Compile scripts                                     2,9s
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,1s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,0s
+    * Prepare assets for target platform                  0,7s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,2s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,2s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Building Resources/unity_builtin_extra              0,3s
+    * Creating compressed player package                  0,0s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                           28,1s (3 msgs)
+      * Initializing                                        0,0s
+      * Check gradle project collisions                     0,0s
+      * Preparing banner                                    0,0s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                           12,1s
+      * Report output files                                 0,1s
+      * Calling IPostGenerateGradleAndroidProject callbacks       0,0s
+      * Validate Gradle Project                             0,0s
+      * Unity Services Symbol Upload                        0,0s
+      * Building Gradle project                            15,6s
+      * Building Gradle Symbols                             0,0s
+      * Processing Mapping File                             0,0s
+      * Moving output package(s)                            0,2s
+      * Checking Symbols size                               0,0s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [so] libil2cpp.so                                    31,62 MB
+    [APK] unity-build-tool.apk                            22,66 MB
+    [so] libunity.so                                     18,28 MB
+    [c] Il2CppGenericMethodPointerTable.c               12,26 MB
+    [cpp] Il2CppInvokerTable.cpp                           6,96 MB
+    [c] Il2CppTypeDefinitions.c                          6,62 MB
+    [unity default resources] unity default resources                          3,58 MB
+    [dat] global-metadata.dat                              3,55 MB
+    [cpp] Generics__18.cpp                                 3,20 MB
+    [cpp] GenericMethods__4.cpp                            2,88 MB
+    [cpp] Il2CppCCalculateTypeValues.cpp                   2,85 MB
+    [cpp] Generics__32.cpp                                 2,65 MB
+    [c] Il2CppGenericInstDefinitions.c                   2,55 MB
+    [c] Il2CppMetadataUsage.c                            2,45 MB
+    [cpp] UnityEngine.UIElementsModule__7.cpp              2,40 MB
+    ... and 353 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+ BUILD REPORT: Android (Android)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/Android_1.1.12/unity-build-tool.aab
+  Total Size:    366,04 MB
+  Duration:      40,7s
+  Errors:        0
+  Warnings:      3
+  Built At:      2026-11-22 17:41:51 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       40,6s
+    * Preprocess Player                                   0,8s (1 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       4,4s
+      * Prebuild Cleanup and Recompile                      4,1s
+        * Compile scripts                                     4,0s
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,0s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,0s
+    * Prepare assets for target platform                  0,0s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,1s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,1s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Building Resources/unity_builtin_extra              0,3s
+    * Creating compressed player package                  0,0s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                           34,0s (3 msgs)
+      * Initializing                                        0,0s
+      * Check gradle project collisions                     0,0s
+      * Preparing banner                                    0,0s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                           15,2s
+      * Report output files                                 0,1s
+      * Calling IPostGenerateGradleAndroidProject callbacks       0,0s
+      * Validate Gradle Project                             0,0s
+      * Unity Services Symbol Upload                        0,0s
+      * Building Gradle project                            18,5s
+      * Building Gradle Symbols                             0,0s
+      * Processing Mapping File                             0,0s
+      * Moving output package(s)                            0,1s
+      * Checking APKs size                                  0,0s
+      * Checking Symbols size                               0,0s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [so] libil2cpp.so                                    31,62 MB
+    [Android AppBundle] unity-build-tool.aab                            22,30 MB
+    [so] libunity.so                                     18,28 MB
+    [c] Il2CppGenericMethodPointerTable.c               12,26 MB
+    [cpp] Il2CppInvokerTable.cpp                           6,96 MB
+    [c] Il2CppTypeDefinitions.c                          6,62 MB
+    [unity default resources] unity default resources                          3,58 MB
+    [dat] global-metadata.dat                              3,55 MB
+    [cpp] Generics__18.cpp                                 3,20 MB
+    [cpp] GenericMethods__4.cpp                            2,88 MB
+    [cpp] Il2CppCCalculateTypeValues.cpp                   2,85 MB
+    [cpp] Generics__32.cpp                                 2,65 MB
+    [c] Il2CppGenericInstDefinitions.c                   2,55 MB
+    [c] Il2CppMetadataUsage.c                            2,45 MB
+    [cpp] UnityEngine.UIElementsModule__7.cpp              2,40 MB
+    ... and 355 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+ BUILD REPORT: Linux Server (StandaloneLinux64)
+================================================================================
+  Result:        Succeeded
+  Output Path:   O:/Other Projects/unity-build-tool/Build/v1.0.12 2026-11-22 22-39/Linux Server_1.1.12/unity-build-tool.x86_64
+  Total Size:    78,68 MB
+  Duration:      13,4s
+  Errors:        1
+  Warnings:      0
+  Built At:      2026-11-22 17:42:33 UTC
+--------------------------------------------------------------------------------
+ BUILD STEPS:
+  * Build player                                       13,3s
+    * Preprocess Player                                   0,8s (1 msgs)
+    * Prepare For Build                                   0,0s
+    * ProducePlayerScriptAssemblies                       6,6s
+      * Prebuild Cleanup and Recompile                      6,3s
+        * Compile scripts                                     6,2s (1 msgs)
+        * Generate and validate platform script types         0,0s
+    * Verify Build setup                                  0,4s
+      * GetUnityAssemblies                                  0,0s
+      * GetPlayerAssemblies                                 0,0s
+      * Check old data build                                0,4s
+    * Prepare assets for target platform                  0,6s
+    * Prepare splash screen                               0,0s (1 msgs)
+    * Build scripts DLLs                                  0,0s
+      * GetSystemAssemblies                                 0,0s
+    * Building scenes                                     0,1s
+      * Building scene Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,1s
+    * Build GlobalGameManagers file                       0,1s
+    * Writing asset files                                 0,0s
+      * Packaging assets - globalgamemanagers.assets        0,0s
+      * Packaging assets - resources.assets                 0,0s
+      * Packaging assets - sharedassets0.assets = additional assets for scene 0: Assets/Samples/Build Tool/1.1.1/Build Info Display/Scenes/BuildInfoDemo.unity       0,0s
+    * Write data build dirty tracking information         0,0s
+    * Postprocess built player                            4,2s
+      * Setup incremental player build                      0,1s
+      * Incremental player build                            4,1s
+      * Report output files                                 0,0s
+--------------------------------------------------------------------------------
+ OUTPUT ARTIFACTS:
+    [so] UnityPlayer.so                                  38,08 MB
+    [unity default resources] unity default resources                          5,61 MB
+    [DependentManagedLibrary] mscorlib.dll                                     4,41 MB
+    [so] libmonobdwgc-2.0.so                              3,68 MB
+    [DependentManagedLibrary] System.Xml.dll                                   3,01 MB
+    [DependentManagedLibrary] System.dll                                       2,53 MB
+    [ManagedEngineAPI] UnityEngine.UIElementsModule.dll                 2,23 MB
+    [so] libmono-native.so                                2,20 MB
+    [DependentManagedLibrary] System.Data.dll                                  2,01 MB
+    [ManagedEngineAPI] UnityEngine.CoreModule.dll                       1,87 MB
+    [DependentManagedLibrary] System.Core.dll                                  1,06 MB
+    [DependentManagedLibrary] System.Runtime.Serialization.dll                912,5 KB
+    [ManagedEngineAPI] UnityEngine.MathematicsModule.dll               713,0 KB
+    [ManagedLibrary] Newtonsoft.Json.dll                             675,5 KB
+    [DependentManagedLibrary] System.Drawing.dll                              478,5 KB
+    ... and 139 more files
+--------------------------------------------------------------------------------
+================================================================================
+
+

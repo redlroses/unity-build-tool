@@ -1,0 +1,9 @@
+﻿BUILD FAILED WITH EXCEPTION.
+Error: Failed to push build info to remote tracking branch after 3 attempts. Failed to force-push branch. fatal: unable to access 'https://github.com/redlroses/unity-build-tool/': TLS connect error: error:0A000126:SSL routines::unexpected eof while reading
+. Arguments push origin build-tracking --force-with-lease
+Duration: 00:22
+Stack Trace:
+  at BuildTool.Tracking.Editor.BuildTracker.UpdateBuildIndex (BuildTool.Tracking.Editor.GitRepository projectGit, BuildTool.Tracking.Editor.GitRepository trackingGit, System.String commit, System.String dateUtc) [0x0096c] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\BuildTracker.cs:346 
+  at BuildTool.Tracking.Editor.BuildTracker.TrackAsync (System.Boolean isRemote, System.String initMessage) [0x001c9] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\BuildTracker.cs:173 
+  at BuildTool.Editor.BuildTool.RegisterRemote () [0x0009b] in .\Packages\com.redliketeam.buildtool\Editor\Core\BuildTool.cs:398 
+  at BuildTool.Editor.Pipeline.BuildPipelineRunner.RunAsync (BuildTool.Editor.Pipeline.BuildExecutionRequest request) [0x00175] in .\Packages\com.redliketeam.buildtool\Editor\Core\Pipeline\BuildPipelineRunner.cs:351 

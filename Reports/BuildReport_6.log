@@ -1,0 +1,17 @@
+﻿BUILD FAILED WITH EXCEPTION.
+Error: Failed to fetch. fatal: unable to access 'https://github.com/redlroses/unity-build-tool/': schannel: failed to receive handshake, SSL/TLS connection failed
+. Arguments fetch origin
+Duration: 00:12
+Stack Trace:
+  at BuildTool.Tracking.Editor.GitRepository+<>c__DisplayClass33_0.<StartProcess>b__0 () [0x000f1] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\GitRepository.cs:653 
+  at System.Threading.Tasks.Task`1[TResult].InnerInvoke () [0x0000f] in <816f70bc2a9c4332b0bd119906a8d40e>:0 
+  at System.Threading.Tasks.Task.Execute () [0x00000] in <816f70bc2a9c4332b0bd119906a8d40e>:0 
+--- End of stack trace from previous location where exception was thrown ---
+
+  at BuildTool.Tracking.Editor.GitRepository.SendCommand (System.String command, System.String successMessage, System.String errorMessage, System.Boolean ignoreRepoExist) [0x00143] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\GitRepository.cs:107 
+  at BuildTool.Tracking.Editor.GitRepository.Fetch () [0x00030] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\GitRepository.cs:124 
+  at BuildTool.Tracking.Editor.BuildTracker.PrepareTrackingRepository (BuildTool.Tracking.Editor.GitRepository trackingGit, System.String repositoryUrl, System.String projectBranch, System.Boolean isLocal) [0x001f3] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\BuildTracker.cs:553 
+  at BuildTool.Tracking.Editor.BuildTracker.UpdateBuildIndex (BuildTool.Tracking.Editor.GitRepository projectGit, BuildTool.Tracking.Editor.GitRepository trackingGit, System.String commit, System.String dateUtc) [0x009fe] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\BuildTracker.cs:353 
+  at BuildTool.Tracking.Editor.BuildTracker.TrackAsync (System.Boolean isRemote, System.String initMessage) [0x001c9] in .\Packages\com.redliketeam.buildtool\Editor\Tracking\BuildTracker.cs:173 
+  at BuildTool.Editor.BuildTool.RegisterRemote () [0x0009b] in .\Packages\com.redliketeam.buildtool\Editor\Core\BuildTool.cs:273 
+  at BuildTool.Editor.Pipeline.BuildPipelineRunner.RunAsync (BuildTool.Editor.Pipeline.BuildExecutionRequest request) [0x001b0] in .\Packages\com.redliketeam.buildtool\Editor\Core\Pipeline\BuildPipelineRunner.cs:62 
