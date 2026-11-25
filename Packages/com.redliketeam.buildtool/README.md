@@ -5,7 +5,7 @@
 
 An automation and pipeline orchestration tool for Unity that configures, executes, and tracks sequential multi-platform builds with custom pre/post-processing extensions, notifications, and CI/CD CLI support.
 
-![Build Tool Interface](Images/interface-preview.png)
+![Build Tool Interface](https://raw.githubusercontent.com/redlroses/unity-build-tool/main/Images/interface-preview.png)
 
 ---
 
@@ -34,14 +34,14 @@ An automation and pipeline orchestration tool for Unity that configures, execute
 2. Click **+** → **Add package from git URL...**
 3. Paste:
    ```text
-   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2
+   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.3
    ```
 
 Alternatively, add it directly to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2"
+    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.3"
   }
 }
 ```

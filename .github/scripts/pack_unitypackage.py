@@ -4,6 +4,9 @@ import re
 import subprocess
 import tempfile
 
+EXCLUDED_ROOT_DIRS = {'images'}
+EXCLUDED_ROOT_FILES = {'package.json', 'license.md', 'license'}
+
 def get_guid(meta_path):
     with open(meta_path, 'r', encoding='utf-8', errors='ignore') as f:
         content = f.read()
@@ -25,8 +28,13 @@ DefaultImporter:
     entries.append(('8f7e2d9a3b4c5d6e7f8a9b0c1d2e3f4a', dest_prefix, root_meta.encode('utf-8'), None))
 
     for dirpath, dirnames, filenames in os.walk(source_dir):
-        dirnames[:] = [d for d in dirnames if not d.endswith('~') and not d.startswith('.')]
         rel_dir = os.path.relpath(dirpath, source_dir).replace('\\\\', '/').replace('\\', '/')
+        dirnames[:] = [
+            d for d in dirnames
+            if not d.endswith('~')
+            and not d.startswith('.')
+            and not (rel_dir == '.' and d.lower() in EXCLUDED_ROOT_DIRS)
+        ]
         
         if rel_dir != '.':
             dir_meta = dirpath + '.meta'
@@ -39,6 +47,8 @@ DefaultImporter:
 
         for f in filenames:
             if f.endswith('.meta') or f.startswith('.'):
+                continue
+            if rel_dir == '.' and f.lower() in EXCLUDED_ROOT_FILES:
                 continue
             full_path = os.path.join(dirpath, f)
             meta_path = full_path + '.meta'

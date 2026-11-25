@@ -27,14 +27,14 @@ An automation and pipeline orchestration tool for Unity that configures, execute
 2. Click **+** → **Add package from git URL...**
 3. Paste:
    ```text
-   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2
+   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.3
    ```
 
 Alternatively, add it directly to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2"
+    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.3"
   }
 }
 ```

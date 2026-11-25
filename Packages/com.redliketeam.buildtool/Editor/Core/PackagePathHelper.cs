@@ -1,22 +1,17 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace BuildTool.Editor
 {
-    /// <summary>
-    /// Utility for dynamically resolving paths to assets, styles, and files inside the package,
-    /// regardless of whether the package is embedded in Packages/, referenced in Library/PackageCache/,
-    /// or imported directly into Assets/.
-    /// </summary>
     internal static class PackagePathHelper
     {
         public const string DefaultPackageId = "com.redliketeam.buildtool";
+        private const string HelperRelativeScriptPath = "/Editor/Core/PackagePathHelper.cs";
         private static string s_PackageRoot;
+        private static string s_PackagePhysicalRoot;
 
-        /// <summary>
-        /// Gets the resolved project-relative root path of this package (e.g. "Packages/com.redliketeam.buildtool").
-        /// </summary>
         public static string PackageRoot
         {
             get
@@ -24,19 +19,51 @@ namespace BuildTool.Editor
                 if (string.IsNullOrEmpty(s_PackageRoot))
                 {
                     var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(PackagePathHelper).Assembly);
-                    s_PackageRoot = info != null && !string.IsNullOrEmpty(info.assetPath)
-                        ? info.assetPath
-                        : $"Packages/{DefaultPackageId}";
+                    if (info != null && !string.IsNullOrEmpty(info.assetPath))
+                    {
+                        s_PackageRoot = info.assetPath;
+                    }
+                    else
+                    {
+                        s_PackageRoot = FindAssetInstallRoot() ?? $"Packages/{DefaultPackageId}";
+                    }
                 }
 
                 return s_PackageRoot;
             }
         }
 
-        /// <summary>
-        /// Returns a full asset path for a relative sub-path within the package.
-        /// Example: GetAssetPath("Editor/Core/BuildWindow.uss") -> "Packages/com.redliketeam.buildtool/Editor/Core/BuildWindow.uss"
-        /// </summary>
+        public static string PackagePhysicalRoot
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(s_PackagePhysicalRoot))
+                {
+                    var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(PackagePathHelper).Assembly);
+                    s_PackagePhysicalRoot = info != null && !string.IsNullOrEmpty(info.resolvedPath)
+                        ? info.resolvedPath
+                        : Path.GetFullPath(PackageRoot);
+                }
+
+                return s_PackagePhysicalRoot;
+            }
+        }
+
+        private static string FindAssetInstallRoot()
+        {
+            var guids = AssetDatabase.FindAssets("PackagePathHelper t:MonoScript");
+            foreach (var guid in guids)
+            {
+                var assetPath = AssetDatabase.GUIDToAssetPath(guid).Replace('\\', '/');
+                if (assetPath.EndsWith(HelperRelativeScriptPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return assetPath.Substring(0, assetPath.Length - HelperRelativeScriptPath.Length);
+                }
+            }
+
+            return null;
+        }
+
         public static string GetAssetPath(string relativeSubPath)
         {
             if (string.IsNullOrEmpty(relativeSubPath))
@@ -48,9 +75,17 @@ namespace BuildTool.Editor
             return $"{PackageRoot}/{trimmed}";
         }
 
-        /// <summary>
-        /// Loads a StyleSheet at the specified package-relative path with fallback to AssetDatabase.FindAssets.
-        /// </summary>
+        public static string GetFilePath(string relativeSubPath)
+        {
+            if (string.IsNullOrEmpty(relativeSubPath))
+            {
+                return PackagePhysicalRoot;
+            }
+
+            var trimmed = relativeSubPath.TrimStart('/', '\\');
+            return Path.Combine(PackagePhysicalRoot, trimmed);
+        }
+
         public static StyleSheet LoadStyleSheet(string relativeSubPath, string searchPattern = null)
         {
             var path = GetAssetPath(relativeSubPath);

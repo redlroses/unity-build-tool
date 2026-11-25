@@ -15,15 +15,15 @@ namespace BuildTool.Editor
     {
         public const string WindowTitle = "Welcome to Build Tool";
         public static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Welcome/BuildToolWelcomeWindow.uss");
-        public const string DefaultVersion = "1.0.2";
+        public const string DefaultVersion = "1.0.3";
         public const string ShowOnUpdatePrefKey = "build_tool_welcome_show_on_update";
         public const string ShowOnStartPrefKey = "build_tool_welcome_show_on_startup";
         public const string LastVersionPrefKey = "build_tool_welcome_last_version";
 
-        private static string PackageJsonPath => PackagePathHelper.GetAssetPath("package.json");
-        private static string ChangelogPath => PackagePathHelper.GetAssetPath("CHANGELOG.md");
+        private static string PackageJsonPath => PackagePathHelper.GetFilePath("package.json");
+        private static string ChangelogPath => PackagePathHelper.GetFilePath("CHANGELOG.md");
         private const string RootChangelogPath = "CHANGELOG.md";
-        private static string ReadmePath => PackagePathHelper.GetAssetPath("README.md");
+        private static string ReadmePath => PackagePathHelper.GetFilePath("README.md");
         private const string RootReadmePath = "README.md";
         public static string BuildManifestSamplePath => PackagePathHelper.GetAssetPath("Samples~/BuildManifest");
         public static string BuildInfoSamplePath => PackagePathHelper.GetAssetPath("Samples~/BuildInfo");
@@ -35,7 +35,7 @@ namespace BuildTool.Editor
         private const string GitRepoUrl = "https://github.com/redlroses/unity-build-tool";
         private const string GitIssuesUrl = "https://github.com/redlroses/unity-build-tool/issues";
         private const string GitPackageUrl =
-            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.2";
+            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.3";
 
         internal enum WelcomeTab
         {
@@ -792,7 +792,7 @@ namespace BuildTool.Editor
                 return;
             }
 
-            var pkgPath = Path.GetFullPath(PackagePathHelper.PackageRoot);
+            var pkgPath = PackagePathHelper.PackagePhysicalRoot;
             if (Directory.Exists(pkgPath))
             {
                 EditorUtility.RevealInFinder(pkgPath);

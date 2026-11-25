@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- Headers should be listed in this order: Added, Changed, Deprecated, Removed, Fixed, Security -->
 
+## [1.0.3] - 2026-11-26
+### Added
+- Added `LICENSE.md` to the UPM package while excluding it from `.unitypackage` exports.
+
+### Changed
+- Replaced `Newtonsoft.Json` with Unity's built-in `JsonUtility` in `BuildTracker` and `BuildHistoryEntry`, removing the `com.unity.nuget.newtonsoft-json` package dependency.
+- Updated `pack_unitypackage.py` to exclude root `package.json`, `LICENSE.md`, and `Images/` when packing `.unitypackage` archives.
+
+### Removed
+- Removed duplicate `Images/interface-preview.png` from the package folder and updated package `README.md` to link to the repository image.
+
+### Fixed
+- Fixed `PackagePathHelper` path resolution for `.unitypackage` (`Assets/`) and UPM cache (`Library/PackageCache/`) installs, and updated `BuildToolWelcomeWindow` to use physical file paths.
+
 ## [1.0.2] - 2026-11-22
 ### Added
 - Added `GitRepositoryUrlOverride` setting (`BuildTrackingSettings`) for configuring external Git tracking repositories.
