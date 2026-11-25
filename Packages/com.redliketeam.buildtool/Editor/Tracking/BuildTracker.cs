@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using BuildTool.Tracking;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -25,9 +23,8 @@ namespace BuildTool.Tracking.Editor
         {
             get
             {
-                var json = GetBuildIndexJson();
-                var token = json?[BuildTrackingSettings.LastBuildIndexKey];
-                return token?.Value<int>() ?? 0;
+                var data = GetBuildIndexData();
+                return data?.lastBuildIndex ?? 0;
             }
         }
 
@@ -609,11 +606,28 @@ namespace BuildTool.Tracking.Editor
 
             if (!hasBranch)
             {
-                CreateBuildIndexJson();
+                CreateBuildIndexData();
             }
         }
 
-        private static JObject GetBuildIndexJson()
+        [Serializable]
+        private class BuildIndexData
+        {
+            public int lastBuildIndex;
+            public List<BuildHistoryEntryData> history = new List<BuildHistoryEntryData>();
+        }
+
+        [Serializable]
+        private class BuildHistoryEntryData
+        {
+            public int buildIndex;
+            public string dateUtc;
+            public string commit;
+            public string branch;
+            public string appVersion;
+        }
+
+        private static BuildIndexData GetBuildIndexData()
         {
             var jsonFilePath = Path.Combine(
                 BuildTrackingSettings.RepositoryPath,
@@ -621,15 +635,27 @@ namespace BuildTool.Tracking.Editor
 
             if (!File.Exists(jsonFilePath))
             {
-                return CreateBuildIndexJson();
+                return CreateBuildIndexData();
             }
 
             try
             {
                 var text = File.ReadAllText(jsonFilePath);
-                return string.IsNullOrWhiteSpace(text) ? CreateBuildIndexJson() : JObject.Parse(text);
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return CreateBuildIndexData();
+                }
+
+                var data = JsonUtility.FromJson<BuildIndexData>(text);
+                if (data == null)
+                {
+                    throw new InvalidDataException("Parsed buildInfo.json is null.");
+                }
+
+                data.history ??= new List<BuildHistoryEntryData>();
+                return data;
             }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is InvalidDataException)
             {
                 var backupPath = $"{jsonFilePath}.corrupt.{DateTime.UtcNow:yyyyMMddHHmmss}";
                 try
@@ -648,21 +674,21 @@ namespace BuildTool.Tracking.Editor
             }
         }
 
-        private static JObject CreateBuildIndexJson()
+        private static BuildIndexData CreateBuildIndexData()
         {
-            var jsonObject = new JObject
+            var data = new BuildIndexData
             {
-                [BuildTrackingSettings.LastBuildIndexKey] = 0,
-                [BuildTrackingSettings.HistoryKey] = new JArray()
+                lastBuildIndex = 0,
+                history = new List<BuildHistoryEntryData>()
             };
 
             var dir = Path.GetDirectoryName(s_JsonFilePath);
             if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
             {
-                AtomicWriteText(s_JsonFilePath, jsonObject.ToString(Formatting.Indented));
+                AtomicWriteText(s_JsonFilePath, JsonUtility.ToJson(data, true));
             }
 
-            return jsonObject;
+            return data;
         }
 
         private static Task<int> IncrementBuildIndexAndRecordHistory(
@@ -684,44 +710,27 @@ namespace BuildTool.Tracking.Editor
                     hasLock = true;
                 }
 
-                var jsonObject = GetBuildIndexJson();
-                var indexToken = jsonObject[BuildTrackingSettings.LastBuildIndexKey];
+                var data = GetBuildIndexData();
+                var newIndex = data.lastBuildIndex > 0 ? data.lastBuildIndex + 1 : 1;
+                data.lastBuildIndex = newIndex;
+                data.history ??= new List<BuildHistoryEntryData>();
 
-                int newIndex;
-                if (indexToken != null && indexToken.Type == JTokenType.Integer)
+                var entry = new BuildHistoryEntryData
                 {
-                    newIndex = indexToken.Value<int>() + 1;
-                }
-                else
-                {
-                    newIndex = 1;
-                }
+                    buildIndex = newIndex,
+                    dateUtc = dateUtc,
+                    commit = commit,
+                    branch = branch,
+                    appVersion = appVersion
+                };
+                data.history.Add(entry);
 
-                jsonObject[BuildTrackingSettings.LastBuildIndexKey] = newIndex;
-
-                JArray historyArray;
-                if (jsonObject[BuildTrackingSettings.HistoryKey] is JArray existingHistory)
+                if (s_Config.MaxHistoryEntries > 0 && data.history.Count > s_Config.MaxHistoryEntries)
                 {
-                    historyArray = existingHistory;
-                }
-                else
-                {
-                    historyArray = new JArray();
-                    jsonObject[BuildTrackingSettings.HistoryKey] = historyArray;
+                    data.history.RemoveRange(0, data.history.Count - s_Config.MaxHistoryEntries);
                 }
 
-                var entry = new BuildHistoryEntry(newIndex, dateUtc, commit, branch, appVersion);
-                historyArray.Add(JObject.FromObject(entry));
-
-                if (s_Config.MaxHistoryEntries > 0 && historyArray.Count > s_Config.MaxHistoryEntries)
-                {
-                    while (historyArray.Count > s_Config.MaxHistoryEntries)
-                    {
-                        historyArray.RemoveAt(0);
-                    }
-                }
-
-                AtomicWriteText(s_JsonFilePath, jsonObject.ToString(Formatting.Indented));
+                AtomicWriteText(s_JsonFilePath, JsonUtility.ToJson(data, true));
 
                 return Task.FromResult(newIndex);
             }

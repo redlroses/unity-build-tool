@@ -16,9 +16,7 @@
     "email": "redlroses.rlr@gmail.com",
     "url": "https://github.com/redlroses"
   },
-  "dependencies": {
-    "com.unity.nuget.newtonsoft-json": "3.2.1"
-  },
+  "dependencies": {},
   "samples": [
     {
       "displayName": "Build Manifest Extension",
