@@ -4,7 +4,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--unity-colors-window-background, #282828);
+    background-color: var(--unity-colors-window-background);
     flex-direction: column;
     overflow: hidden;
 }
@@ -12,7 +12,7 @@
 .welcome-header {
     padding: 14px 18px 12px 18px;
     border-bottom-width: 1px;
-    border-bottom-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-bottom-color: var(--unity-colors-helpbox-border);
     background-color: rgba(0, 0, 0, 0.12);
     flex-shrink: 0;
 }
@@ -39,7 +39,7 @@
 .welcome-title {
     font-size: 18px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #ffffff);
+    color: var(--unity-colors-default-text);
 }
 
 .welcome-version-badge {
@@ -53,7 +53,7 @@
 
 .welcome-subtitle {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #999999);
+    color: var(--unity-colors-default-text-hover);
     margin-top: 4px;
     white-space: normal;
 }
@@ -70,7 +70,7 @@
     width: 210px;
     flex-shrink: 0;
     border-right-width: 1px;
-    border-right-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-right-color: var(--unity-colors-helpbox-border);
     padding: 10px 6px;
     background-color: rgba(0, 0, 0, 0.08);
 }
@@ -106,7 +106,7 @@
 
 .welcome-nav-label {
     font-size: 12px;
-    color: var(--unity-colors-default-text, #e4e4e7);
+    color: var(--unity-colors-default-text);
     flex-shrink: 1;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -115,7 +115,7 @@
 
 .welcome-nav-label-active {
     -unity-font-style: bold;
-    color: var(--unity-colors-highlight-text, #ffffff);
+    color: var(--unity-colors-highlight-text);
 }
 
 .welcome-content-scroll {
@@ -132,12 +132,12 @@
 .welcome-section-title {
     font-size: 15px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #ffffff);
+    color: var(--unity-colors-default-text);
 }
 
 .welcome-section-desc {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #999999);
+    color: var(--unity-colors-default-text-hover);
     margin-top: 3px;
     white-space: normal;
 }
@@ -150,7 +150,7 @@
     border-radius: 6px;
     background-color: rgba(0, 0, 0, 0.16);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     margin-bottom: 14px;
 }
 
@@ -200,9 +200,9 @@
 }
 
 .welcome-step-card {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.16));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 10px;
@@ -243,12 +243,12 @@
 .welcome-step-title {
     font-size: 13px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #f0f0f0);
+    color: var(--unity-colors-default-text);
 }
 
 .welcome-step-desc {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #aaaaaa);
+    color: var(--unity-colors-default-text-hover);
     white-space: normal;
     margin-bottom: 8px;
 }
@@ -259,9 +259,9 @@
 }
 
 .welcome-feature-card {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.14));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.22));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 9px 11px;
     margin-bottom: 8px;
@@ -283,19 +283,19 @@
 .welcome-feature-title {
     font-size: 12px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #f0f0f0);
+    color: var(--unity-colors-default-text);
 }
 
 .welcome-feature-desc {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #aaaaaa);
+    color: var(--unity-colors-default-text-hover);
     white-space: normal;
 }
 
 .welcome-sample-box {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.16));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 12px 14px;
     margin-bottom: 12px;
@@ -304,22 +304,22 @@
 .welcome-changelog-box {
     background-color: rgba(0, 0, 0, 0.2);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 10px 12px;
 }
 
 .welcome-changelog-item {
     font-size: 11px;
-    color: var(--unity-colors-default-text, #e4e4e7);
+    color: var(--unity-colors-default-text);
     margin-bottom: 5px;
     white-space: normal;
 }
 
 .welcome-links-card {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.16));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 8px;
@@ -359,8 +359,8 @@
 .welcome-btn-secondary {
     background-color: rgba(255, 255, 255, 0.08);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
-    color: var(--unity-colors-default-text, #ffffff);
+    border-color: var(--unity-colors-helpbox-border);
+    color: var(--unity-colors-default-text);
 }
 
 .welcome-btn-secondary:hover {
@@ -376,7 +376,7 @@
     min-height: 44px;
     max-height: 44px;
     border-top-width: 1px;
-    border-top-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-top-color: var(--unity-colors-helpbox-border);
     background-color: rgba(0, 0, 0, 0.15);
     flex-shrink: 0;
 }
@@ -389,7 +389,7 @@
 .welcome-footer-toggle {
     margin-right: 14px;
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #aaaaaa);
+    color: var(--unity-colors-default-text-hover);
 }
 
 .welcome-footer-buttons {
@@ -402,9 +402,9 @@
 }
 
 .welcome-about-card {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.16));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 14px 16px;
     margin-bottom: 12px;
@@ -418,7 +418,7 @@
 
 .welcome-about-author-prefix {
     font-size: 13px;
-    color: var(--unity-colors-default-text-hover, #9ca3af);
+    color: var(--unity-colors-default-text-hover);
     margin-right: 6px;
 }
 
@@ -430,7 +430,7 @@
 
 .welcome-about-message {
     font-size: 12px;
-    color: var(--unity-colors-default-text, #e4e4e7);
+    color: var(--unity-colors-default-text);
     white-space: normal;
     margin-bottom: 12px;
 }
@@ -438,7 +438,7 @@
 .welcome-about-links {
     background-color: rgba(0, 0, 0, 0.12);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.2));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 5px;
     padding: 8px 10px;
 }
@@ -460,7 +460,7 @@
 .welcome-about-link-prefix {
     font-size: 11px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text-hover, #aaaaaa);
+    color: var(--unity-colors-default-text-hover);
     margin-right: 4px;
 }
 
@@ -494,6 +494,6 @@
 
 .welcome-about-license-text {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #888888);
+    color: var(--unity-colors-default-text-hover);
     -unity-text-align: middle-center;
 }

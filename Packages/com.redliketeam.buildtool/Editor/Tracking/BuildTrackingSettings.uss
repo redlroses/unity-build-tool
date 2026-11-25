@@ -12,15 +12,15 @@
 .tracking-page-title {
     font-size: 19px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #ffffff);
+    color: var(--unity-colors-default-text);
     margin-bottom: 8px;
     flex-shrink: 0;
 }
 
 .tracking-section-card {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.15));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 5px;
     padding: 8px 10px;
     margin-top: 8px;
@@ -31,7 +31,7 @@
 .tracking-section-title {
     font-size: 12px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #e0e0e0);
+    color: var(--unity-colors-default-text);
     margin-bottom: 4px;
     flex-shrink: 0;
 }
@@ -39,12 +39,12 @@
 .tracking-section-subtitle {
     font-size: 11px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #d0d0d0);
+    color: var(--unity-colors-default-text);
     margin-bottom: 2px;
 }
 
 .tracking-hint-text {
-    color: var(--unity-colors-default-text-hover, #999999);
+    color: var(--unity-colors-default-text-hover);
     font-size: 11px;
     white-space: normal;
     margin-bottom: 4px;

@@ -15,7 +15,7 @@ namespace BuildTool.Editor
     {
         public const string WindowTitle = "Welcome to Build Tool";
         public static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Welcome/BuildToolWelcomeWindow.uss");
-        public const string DefaultVersion = "1.0.3";
+        public const string DefaultVersion = "1.0.4";
         public const string ShowOnUpdatePrefKey = "build_tool_welcome_show_on_update";
         public const string ShowOnStartPrefKey = "build_tool_welcome_show_on_startup";
         public const string LastVersionPrefKey = "build_tool_welcome_last_version";
@@ -35,7 +35,7 @@ namespace BuildTool.Editor
         private const string GitRepoUrl = "https://github.com/redlroses/unity-build-tool";
         private const string GitIssuesUrl = "https://github.com/redlroses/unity-build-tool/issues";
         private const string GitPackageUrl =
-            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.3";
+            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.4";
 
         internal enum WelcomeTab
         {
@@ -47,7 +47,7 @@ namespace BuildTool.Editor
             AboutAndCredits
         }
 
-        private WelcomeTab _currentTab = WelcomeTab.GettingStarted;
+        [SerializeField] private WelcomeTab _currentTab = WelcomeTab.GettingStarted;
         private ScrollView _contentContainer;
         private readonly List<(WelcomeTab Tab, VisualElement Element, Label Label)> _navElements = new();
 
@@ -580,7 +580,7 @@ namespace BuildTool.Editor
             AddSampleCard(
                 container,
                 "Build Manifest Generator Extension",
-                "Samples~/BuildManifest",
+                GetSampleBadgeText(BuildManifestSamplePath, "Samples~/BuildManifest"),
                 "Generates a comprehensive build-manifest.json containing git hash, branch, build index, "
                 + "platform, and timestamp upon each successful profile build. Features full UI Toolkit "
                 + "extension panel and CLI --ext support.",
@@ -591,13 +591,24 @@ namespace BuildTool.Editor
             AddSampleCard(
                 container,
                 "Build Info Display",
-                "Samples~/BuildInfo",
+                GetSampleBadgeText(BuildInfoSamplePath, "Samples~/BuildInfo"),
                 "Demonstrates runtime build information display and watermark overlay using BuildInfoDisplay "
                 + "prefab, BuildInfoView component, and BuildInfoProvider API with clipboard copy support.",
                 BuildInfoSamplePath,
                 "Build Info Display",
                 "BuildInfoDemo"
             );
+        }
+
+        private static string GetSampleBadgeText(string samplePath, string defaultBadge)
+        {
+            if (!Directory.Exists(ResolveSamplePath(samplePath)) &&
+                !string.IsNullOrEmpty(ResolveSamplePackagePath(samplePath)))
+            {
+                return $"Samples/{GetSampleFolderName(samplePath)}.unitypackage";
+            }
+
+            return defaultBadge;
         }
 
         private void AddSampleCard(
@@ -669,7 +680,7 @@ namespace BuildTool.Editor
                 }
             }
 
-            var sampleReadmeBtn = new Button(() => OpenSampleReadme(samplePath))
+            var sampleReadmeBtn = new Button(() => OpenSampleReadme(samplePath, sampleDisplayName))
             {
                 text = "Open Sample Readme"
             };
@@ -681,57 +692,268 @@ namespace BuildTool.Editor
             container.Add(sampleCard);
         }
 
+        private static string GetSampleFolderName(string sampleRelativePath)
+        {
+            return string.IsNullOrWhiteSpace(sampleRelativePath)
+                ? string.Empty
+                : Path.GetFileName(sampleRelativePath.TrimEnd('/', '\\'));
+        }
+
+        public static string ResolveSamplePackagePath(string sampleRelativePath)
+        {
+            var folderName = GetSampleFolderName(sampleRelativePath);
+            if (string.IsNullOrEmpty(folderName))
+            {
+                return null;
+            }
+
+            var directPath = PackagePathHelper.GetFilePath($"Samples/{folderName}.unitypackage");
+            if (File.Exists(directPath))
+            {
+                return Path.GetFullPath(directPath);
+            }
+
+            var expectedSuffix = $"/{folderName}.unitypackage";
+            var guids = AssetDatabase.FindAssets($"{folderName} t:DefaultAsset");
+            foreach (var guid in guids)
+            {
+                var assetPath = AssetDatabase.GUIDToAssetPath(guid).Replace('\\', '/');
+                if (assetPath.EndsWith(expectedSuffix, StringComparison.OrdinalIgnoreCase) && File.Exists(assetPath))
+                {
+                    return Path.GetFullPath(assetPath);
+                }
+            }
+
+            return null;
+        }
+
+        public static string FindImportedSampleDirectory(string samplePath, string displayName)
+        {
+            if (!string.IsNullOrEmpty(displayName))
+            {
+                var standardPath = Path.Combine("Assets", "Samples", "Build Tool", GetPackageVersion(), displayName);
+                if (Directory.Exists(standardPath))
+                {
+                    return standardPath;
+                }
+
+                var unversionedPath = Path.Combine("Assets", "Samples", "Build Tool", displayName);
+                if (Directory.Exists(unversionedPath))
+                {
+                    return unversionedPath;
+                }
+
+                var samplesRoot = Path.Combine("Assets", "Samples", "Build Tool");
+                if (Directory.Exists(samplesRoot))
+                {
+                    foreach (var versionDir in Directory.GetDirectories(samplesRoot))
+                    {
+                        var candidate = Path.Combine(versionDir, displayName);
+                        if (Directory.Exists(candidate))
+                        {
+                            return candidate;
+                        }
+                    }
+                }
+            }
+
+            var folderName = GetSampleFolderName(samplePath);
+            if (!string.IsNullOrEmpty(folderName))
+            {
+                var legacyPath = Path.Combine("Assets", "Samples", folderName);
+                if (Directory.Exists(legacyPath))
+                {
+                    return legacyPath;
+                }
+            }
+
+            return null;
+        }
+
+        public static string ResolveSampleReadmePath(string samplePath, string displayName = null)
+        {
+            var sourceDir = ResolveSamplePath(samplePath);
+            if (Directory.Exists(sourceDir))
+            {
+                var sourceReadme = Path.Combine(sourceDir, "README.md");
+                if (File.Exists(sourceReadme))
+                {
+                    return sourceReadme;
+                }
+            }
+
+            var folderName = GetSampleFolderName(samplePath);
+            if (!string.IsNullOrEmpty(folderName))
+            {
+                var companionReadme = PackagePathHelper.GetFilePath($"Samples/{folderName}_README.md");
+                if (File.Exists(companionReadme))
+                {
+                    return Path.GetFullPath(companionReadme);
+                }
+
+                var expectedSuffix = $"/{folderName}_README.md";
+                var guids = AssetDatabase.FindAssets($"{folderName}_README t:TextAsset");
+                foreach (var guid in guids)
+                {
+                    var assetPath = AssetDatabase.GUIDToAssetPath(guid).Replace('\\', '/');
+                    if (assetPath.EndsWith(expectedSuffix, StringComparison.OrdinalIgnoreCase) &&
+                        File.Exists(assetPath))
+                    {
+                        return Path.GetFullPath(assetPath);
+                    }
+                }
+            }
+
+            var importedDir = FindImportedSampleDirectory(samplePath, displayName);
+            if (!string.IsNullOrEmpty(importedDir))
+            {
+                var importedReadme = Path.Combine(importedDir, "README.md");
+                if (File.Exists(importedReadme))
+                {
+                    return Path.GetFullPath(importedReadme);
+                }
+            }
+
+            return null;
+        }
+
         public static bool IsSampleImported(string samplePath, string displayName)
         {
-            var standardPath = Path.Combine("Assets", "Samples", "Build Tool", GetPackageVersion(), displayName);
-            if (Directory.Exists(standardPath))
-            {
-                return true;
-            }
-
-            var folderName = Path.GetFileName(samplePath);
-            var legacyPath = Path.Combine("Assets", "Samples", folderName);
-            if (Directory.Exists(legacyPath))
-            {
-                return true;
-            }
-
-            return false;
+            return !string.IsNullOrEmpty(FindImportedSampleDirectory(samplePath, displayName));
         }
 
         public static void ImportSample(string samplePath, string displayName)
         {
             var sourceDir = ResolveSamplePath(samplePath);
-            if (!Directory.Exists(sourceDir))
+            if (Directory.Exists(sourceDir))
             {
-                EditorUtility.DisplayDialog("Build Tool", $"Sample source directory not found:\n{sourceDir}", "OK");
+                var destDir = Path.Combine("Assets", "Samples", "Build Tool", GetPackageVersion(), displayName);
+                if (Directory.Exists(destDir) || IsSampleImported(samplePath, displayName))
+                {
+                    if (!EditorUtility.DisplayDialog(
+                        "Reimport Sample",
+                        $"Sample '{displayName}' is already imported.\n\n" +
+                        "Do you want to reimport and overwrite existing sample files?",
+                        "Reimport", "Cancel"))
+                    {
+                        return;
+                    }
+                }
+
+                try
+                {
+                    CopyDirectory(sourceDir, destDir);
+                    AssetDatabase.Refresh();
+                    EditorUtility.DisplayDialog(
+                        "Build Tool", $"Sample '{displayName}' imported successfully to:\n{destDir}", "OK");
+                }
+                catch (Exception ex)
+                {
+                    EditorUtility.DisplayDialog(
+                        "Build Tool", $"Failed to import sample '{displayName}':\n{ex.Message}", "OK");
+                }
+
                 return;
             }
 
-            var destDir = Path.Combine("Assets", "Samples", "Build Tool", GetPackageVersion(), displayName);
-            if (Directory.Exists(destDir))
+            var samplePackagePath = ResolveSamplePackagePath(samplePath);
+            if (!string.IsNullOrEmpty(samplePackagePath) && File.Exists(samplePackagePath))
             {
-                if (!EditorUtility.DisplayDialog(
-                    "Reimport Sample",
-                    $"Sample '{displayName}' is already imported.\n\n" +
-                    "Do you want to reimport and overwrite existing sample files?",
-                    "Reimport", "Cancel"))
+                if (IsSampleImported(samplePath, displayName))
+                {
+                    if (!EditorUtility.DisplayDialog(
+                        "Reimport Sample",
+                        $"Sample '{displayName}' is already imported.\n\n" +
+                        "Do you want to reimport and overwrite existing sample files?",
+                        "Reimport", "Cancel"))
+                    {
+                        return;
+                    }
+                }
+
+                ImportSamplePackage(samplePackagePath, displayName);
+                return;
+            }
+
+            var expectedPkgPath = PackagePathHelper.GetFilePath($"Samples/{GetSampleFolderName(samplePath)}.unitypackage");
+            EditorUtility.DisplayDialog(
+                "Build Tool",
+                $"Sample source not found.\n\nChecked directory:\n{sourceDir}\n\nChecked package:\n{expectedPkgPath}",
+                "OK");
+        }
+
+        private static void ImportSamplePackage(string packagePath, string displayName)
+        {
+            var expectedPackageName = Path.GetFileNameWithoutExtension(packagePath);
+            AssetDatabase.ImportPackageCallback onCompleted = null;
+            AssetDatabase.ImportPackageFailedCallback onFailed = null;
+            AssetDatabase.ImportPackageCallback onCancelled = null;
+
+            void Unsubscribe()
+            {
+                AssetDatabase.importPackageCompleted -= onCompleted;
+                AssetDatabase.importPackageFailed -= onFailed;
+                AssetDatabase.importPackageCancelled -= onCancelled;
+            }
+
+            onCompleted = packageName =>
+            {
+                if (!string.Equals(packageName, expectedPackageName, StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }
-            }
+
+                Unsubscribe();
+                Debug.Log($"[BuildTool] Sample '{displayName}' imported successfully.");
+                EditorApplication.delayCall += RefreshOpenWelcomeWindows;
+            };
+
+            onFailed = (packageName, errorMessage) =>
+            {
+                if (!string.Equals(packageName, expectedPackageName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                Unsubscribe();
+                EditorUtility.DisplayDialog(
+                    "Build Tool", $"Failed to import sample '{displayName}':\n{errorMessage}", "OK");
+            };
+
+            onCancelled = packageName =>
+            {
+                if (!string.Equals(packageName, expectedPackageName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                Unsubscribe();
+            };
+
+            AssetDatabase.importPackageCompleted += onCompleted;
+            AssetDatabase.importPackageFailed += onFailed;
+            AssetDatabase.importPackageCancelled += onCancelled;
 
             try
             {
-                CopyDirectory(sourceDir, destDir);
-                AssetDatabase.Refresh();
-                EditorUtility.DisplayDialog(
-                    "Build Tool", $"Sample '{displayName}' imported successfully to:\n{destDir}", "OK");
+                AssetDatabase.ImportPackage(packagePath, false);
             }
             catch (Exception ex)
             {
+                Unsubscribe();
                 EditorUtility.DisplayDialog(
                     "Build Tool", $"Failed to import sample '{displayName}':\n{ex.Message}", "OK");
+            }
+        }
+
+        private static void RefreshOpenWelcomeWindows()
+        {
+            foreach (var window in Resources.FindObjectsOfTypeAll<BuildToolWelcomeWindow>())
+            {
+                if (window != null)
+                {
+                    window.BuildUI();
+                }
             }
         }
 
@@ -792,6 +1014,13 @@ namespace BuildTool.Editor
                 return;
             }
 
+            var packagePath = ResolveSamplePackagePath(samplePath);
+            if (!string.IsNullOrEmpty(packagePath) && File.Exists(packagePath))
+            {
+                EditorUtility.RevealInFinder(packagePath);
+                return;
+            }
+
             var pkgPath = PackagePathHelper.PackagePhysicalRoot;
             if (Directory.Exists(pkgPath))
             {
@@ -806,9 +1035,13 @@ namespace BuildTool.Editor
 
         public static void OpenSampleReadme(string samplePath)
         {
-            var folder = ResolveSamplePath(samplePath);
-            var readmePath = Path.Combine(folder, "README.md");
-            if (File.Exists(readmePath))
+            OpenSampleReadme(samplePath, null);
+        }
+
+        public static void OpenSampleReadme(string samplePath, string displayName)
+        {
+            var readmePath = ResolveSampleReadmePath(samplePath, displayName);
+            if (!string.IsNullOrEmpty(readmePath) && File.Exists(readmePath))
             {
                 EditorUtility.OpenWithDefaultApp(readmePath);
             }
@@ -820,7 +1053,7 @@ namespace BuildTool.Editor
 
         public static void OpenSampleReadme()
         {
-            OpenSampleReadme(BuildManifestSamplePath);
+            OpenSampleReadme(BuildManifestSamplePath, "Build Manifest Extension");
         }
 
         private void BuildReleaseNotesTab(VisualElement container)

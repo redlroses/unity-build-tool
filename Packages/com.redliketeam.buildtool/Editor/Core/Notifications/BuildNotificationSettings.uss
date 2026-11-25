@@ -12,14 +12,14 @@
 .notif-page-title {
     font-size: 19px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #ffffff);
+    color: var(--unity-colors-default-text);
     margin-bottom: 4px;
     flex-shrink: 0;
 }
 
 .notif-page-subtitle {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #999999);
+    color: var(--unity-colors-default-text-hover);
     margin-bottom: 12px;
     white-space: normal;
 }
@@ -38,7 +38,7 @@
 .notif-setting-divider {
     height: 1px;
     margin: 10px 0;
-    background-color: var(--unity-colors-helpbox-border, rgba(255, 255, 255, 0.08));
+    background-color: var(--unity-colors-helpbox-border);
 }
 
 .notif-setting-text {
@@ -50,12 +50,12 @@
 .notif-setting-title {
     font-size: 13px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #e8e8e8);
+    color: var(--unity-colors-default-text);
 }
 
 .notif-setting-desc {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #888888);
+    color: var(--unity-colors-default-text-hover);
     white-space: normal;
     margin-top: 2px;
 }
@@ -77,9 +77,9 @@
     height: 20px;
     border-radius: 10px;
     background-image: none;
-    background-color: var(--unity-colors-input_field-background, rgba(0, 0, 0, 0.35));
+    background-color: var(--unity-colors-input_field-background);
     border-width: 1px;
-    border-color: var(--unity-colors-input_field-border, rgba(255, 255, 255, 0.16));
+    border-color: var(--unity-colors-input_field-border);
     padding: 0;
     margin: 0;
     justify-content: center;
@@ -123,9 +123,9 @@
 }
 
 .notif-channel-card {
-    background-color: var(--unity-colors-helpbox-background, rgba(0, 0, 0, 0.15));
+    background-color: var(--unity-colors-helpbox-background);
     border-width: 1px;
-    border-color: var(--unity-colors-helpbox-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-helpbox-border);
     border-radius: 6px;
     padding: 10px 12px;
     margin-top: 10px;
@@ -161,12 +161,12 @@
 .notif-channel-title {
     font-size: 13px;
     -unity-font-style: bold;
-    color: var(--unity-colors-default-text, #e8e8e8);
+    color: var(--unity-colors-default-text);
 }
 
 .notif-channel-desc {
     font-size: 11px;
-    color: var(--unity-colors-default-text-hover, #888888);
+    color: var(--unity-colors-default-text-hover);
     white-space: normal;
     margin-bottom: 8px;
 }
@@ -198,9 +198,9 @@
     flex-grow: 1;
     flex-shrink: 1;
     min-width: 0;
-    background-color: var(--unity-colors-input_field-background, rgba(0, 0, 0, 0.2));
+    background-color: var(--unity-colors-input_field-background);
     border-width: 1px;
-    border-color: var(--unity-colors-input_field-border, rgba(0, 0, 0, 0.3));
+    border-color: var(--unity-colors-input_field-border);
     border-radius: 3px;
     padding: 2px 6px;
     margin-right: 6px;
@@ -212,7 +212,7 @@
     flex-grow: 1;
     flex-shrink: 1;
     min-width: 0;
-    color: var(--unity-colors-default-text, #cccccc);
+    color: var(--unity-colors-default-text);
     -unity-text-align: middle-left;
     letter-spacing: 2px;
     overflow: hidden;
@@ -289,9 +289,9 @@
 .notif-chat-list {
     margin-top: 6px;
     border-width: 1px;
-    border-color: var(--unity-colors-input_field-border, rgba(0, 0, 0, 0.25));
+    border-color: var(--unity-colors-input_field-border);
     border-radius: 4px;
-    background-color: var(--unity-colors-input_field-background, rgba(0, 0, 0, 0.12));
+    background-color: var(--unity-colors-input_field-background);
     overflow: hidden;
     max-width: 100%;
 }
@@ -301,12 +301,12 @@
     align-items: center;
     padding: 3px 6px;
     border-bottom-width: 1px;
-    border-bottom-color: var(--unity-colors-input_field-border, rgba(0, 0, 0, 0.1));
+    border-bottom-color: var(--unity-colors-input_field-border);
     max-width: 100%;
 }
 
 .notif-chat-item:hover {
-    background-color: var(--unity-colors-highlight-background-hover, rgba(255, 255, 255, 0.04));
+    background-color: var(--unity-colors-highlight-background-hover);
 }
 
 .notif-chat-id-label {

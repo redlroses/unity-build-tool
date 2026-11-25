@@ -9,44 +9,30 @@ namespace BuildTool.Editor
     {
         public const string DefaultPackageId = "com.redliketeam.buildtool";
         private const string HelperRelativeScriptPath = "/Editor/Core/PackagePathHelper.cs";
-        private static string s_PackageRoot;
-        private static string s_PackagePhysicalRoot;
+        private static readonly Lazy<string> s_PackageRoot = new(ResolvePackageRoot);
+        private static readonly Lazy<string> s_PackagePhysicalRoot = new(ResolvePackagePhysicalRoot);
 
-        public static string PackageRoot
+        public static string PackageRoot => s_PackageRoot.Value;
+
+        public static string PackagePhysicalRoot => s_PackagePhysicalRoot.Value;
+
+        private static string ResolvePackageRoot()
         {
-            get
+            var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(PackagePathHelper).Assembly);
+            if (info != null && !string.IsNullOrEmpty(info.assetPath))
             {
-                if (string.IsNullOrEmpty(s_PackageRoot))
-                {
-                    var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(PackagePathHelper).Assembly);
-                    if (info != null && !string.IsNullOrEmpty(info.assetPath))
-                    {
-                        s_PackageRoot = info.assetPath;
-                    }
-                    else
-                    {
-                        s_PackageRoot = FindAssetInstallRoot() ?? $"Packages/{DefaultPackageId}";
-                    }
-                }
-
-                return s_PackageRoot;
+                return info.assetPath;
             }
+
+            return FindAssetInstallRoot() ?? $"Packages/{DefaultPackageId}";
         }
 
-        public static string PackagePhysicalRoot
+        private static string ResolvePackagePhysicalRoot()
         {
-            get
-            {
-                if (string.IsNullOrEmpty(s_PackagePhysicalRoot))
-                {
-                    var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(PackagePathHelper).Assembly);
-                    s_PackagePhysicalRoot = info != null && !string.IsNullOrEmpty(info.resolvedPath)
-                        ? info.resolvedPath
-                        : Path.GetFullPath(PackageRoot);
-                }
-
-                return s_PackagePhysicalRoot;
-            }
+            var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(PackagePathHelper).Assembly);
+            return info != null && !string.IsNullOrEmpty(info.resolvedPath)
+                ? info.resolvedPath
+                : Path.GetFullPath(PackageRoot);
         }
 
         private static string FindAssetInstallRoot()

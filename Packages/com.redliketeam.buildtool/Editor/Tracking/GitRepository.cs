@@ -9,17 +9,14 @@ namespace BuildTool.Tracking.Editor
 {
     public class GitRepository
     {
-        private static string s_ResolvedGitPath;
+        private static readonly Lazy<string> s_ResolvedGitPath = new(ResolveGitExecutableCore);
         private readonly bool _enableLog;
         private readonly string _repoPath;
 
-        private static string ResolveGitExecutable()
-        {
-            if (!string.IsNullOrEmpty(s_ResolvedGitPath))
-            {
-                return s_ResolvedGitPath;
-            }
+        private static string ResolveGitExecutable() => s_ResolvedGitPath.Value;
 
+        private static string ResolveGitExecutableCore()
+        {
             var candidates = new[]
             {
                 "git",
@@ -50,8 +47,7 @@ namespace BuildTool.Tracking.Editor
                             p.WaitForExit(3000);
                             if (p.ExitCode == 0)
                             {
-                                s_ResolvedGitPath = "git";
-                                return s_ResolvedGitPath;
+                                return "git";
                             }
                         }
                     }
@@ -61,13 +57,11 @@ namespace BuildTool.Tracking.Editor
                 }
                 else if (File.Exists(candidate))
                 {
-                    s_ResolvedGitPath = candidate;
-                    return s_ResolvedGitPath;
+                    return candidate;
                 }
             }
 
-            s_ResolvedGitPath = "git";
-            return s_ResolvedGitPath;
+            return "git";
         }
 
         public GitRepository(string repoPath, bool enableLog = false)

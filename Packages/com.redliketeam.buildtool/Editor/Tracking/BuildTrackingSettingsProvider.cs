@@ -19,11 +19,14 @@ namespace BuildTool.Tracking.Editor
             return $"{root}/Editor/Tracking/BuildTrackingSettings.uss";
         }
 
-        private static bool s_IsBranchIgnored;
-        private static bool s_HasCheckedRefspec;
-        private static bool s_IsCheckingStatus;
-        private static bool s_IsOperating;
-        private static string s_CheckErrorMessage;
+        private sealed class GitRefspecViewState
+        {
+            public bool IsBranchIgnored;
+            public bool HasCheckedRefspec;
+            public bool IsCheckingStatus;
+            public bool IsOperating;
+            public string CheckErrorMessage;
+        }
 
         [SettingsProvider]
         public static SettingsProvider CreateSettingsProvider()
@@ -86,6 +89,7 @@ namespace BuildTool.Tracking.Editor
             configCard.Add(hint);
 
             Action updateGitSection = null;
+            var refspecState = new GitRefspecViewState();
 
             var fieldsContainer = new VisualElement();
             fieldsContainer.AddToClassList("tracking-fields-container");
@@ -110,9 +114,9 @@ namespace BuildTool.Tracking.Editor
             repoUrlField.RegisterValueChangeCallback(evt =>
             {
                 settings.Save();
-                if (string.IsNullOrWhiteSpace(settings.GitRepositoryUrlOverride) && !s_HasCheckedRefspec)
+                if (string.IsNullOrWhiteSpace(settings.GitRepositoryUrlOverride) && !refspecState.HasCheckedRefspec)
                 {
-                    _ = CheckBranchIgnoredStatus(settings, updateGitSection);
+                    _ = CheckBranchIgnoredStatus(settings, refspecState, updateGitSection);
                 }
                 updateGitSection?.Invoke();
             });
@@ -157,7 +161,7 @@ namespace BuildTool.Tracking.Editor
             gitCard.AddToClassList("tracking-section-card");
             scrollView.Add(gitCard);
 
-            updateGitSection = BuildGitOptimizationSection(gitCard, settings);
+            updateGitSection = BuildGitOptimizationSection(gitCard, settings, refspecState);
         }
 
         private static void LoadStyleSheet(VisualElement rootElement)
@@ -179,7 +183,8 @@ namespace BuildTool.Tracking.Editor
             }
         }
 
-        private static Action BuildGitOptimizationSection(VisualElement container, BuildTrackingSettings settings)
+        private static Action BuildGitOptimizationSection(
+            VisualElement container, BuildTrackingSettings settings, GitRefspecViewState state)
         {
             container.Clear();
 
@@ -214,7 +219,7 @@ namespace BuildTool.Tracking.Editor
                 statusBanner.RemoveFromClassList("tracking-status-inactive");
                 statusBanner.RemoveFromClassList("tracking-status-pending");
 
-                if (s_IsOperating)
+                if (state.IsOperating)
                 {
                     statusBanner.AddToClassList("tracking-status-pending");
                     statusBanner.text = $"Applying Git configuration for '{branchName}', please wait...";
@@ -231,12 +236,12 @@ namespace BuildTool.Tracking.Editor
                     actionBtn.text = "External Repository Configured";
                     actionBtn.SetEnabled(false);
                 }
-                else if (!s_HasCheckedRefspec)
+                else if (!state.HasCheckedRefspec)
                 {
                     statusBanner.AddToClassList("tracking-status-pending");
-                    if (!string.IsNullOrEmpty(s_CheckErrorMessage))
+                    if (!string.IsNullOrEmpty(state.CheckErrorMessage))
                     {
-                        statusBanner.text = $"Git Check Failed: {s_CheckErrorMessage}\n"
+                        statusBanner.text = $"Git Check Failed: {state.CheckErrorMessage}\n"
                             + "Verify Git is installed and available in PATH or project directory.";
                         actionBtn.text = "Retry Git Status Check";
                         actionBtn.SetEnabled(true);
@@ -248,7 +253,7 @@ namespace BuildTool.Tracking.Editor
                         actionBtn.SetEnabled(false);
                     }
                 }
-                else if (s_IsBranchIgnored)
+                else if (state.IsBranchIgnored)
                 {
                     statusBanner.AddToClassList("tracking-status-active");
                     statusBanner.text =
@@ -272,52 +277,53 @@ namespace BuildTool.Tracking.Editor
 
             actionBtn.clicked += () =>
             {
-                if (s_IsOperating)
+                if (state.IsOperating)
                 {
                     return;
                 }
 
-                if (!s_HasCheckedRefspec)
+                if (!state.HasCheckedRefspec)
                 {
-                    s_CheckErrorMessage = null;
-                    _ = CheckBranchIgnoredStatus(settings, updateUI);
+                    state.CheckErrorMessage = null;
+                    _ = CheckBranchIgnoredStatus(settings, state, updateUI);
                     return;
                 }
 
-                if (s_IsBranchIgnored)
+                if (state.IsBranchIgnored)
                 {
-                    _ = UnignoreBranch(settings, updateUI);
+                    _ = UnignoreBranch(settings, state, updateUI);
                 }
                 else
                 {
-                    _ = IgnoreBranch(settings, updateUI);
+                    _ = IgnoreBranch(settings, state, updateUI);
                 }
             };
 
             if (string.IsNullOrWhiteSpace(settings.GitRepositoryUrlOverride) &&
-                !s_HasCheckedRefspec && !s_IsOperating && !s_IsCheckingStatus)
+                !state.HasCheckedRefspec && !state.IsOperating && !state.IsCheckingStatus)
             {
-                _ = CheckBranchIgnoredStatus(settings, updateUI);
+                _ = CheckBranchIgnoredStatus(settings, state, updateUI);
             }
 
             updateUI();
             return updateUI;
         }
 
-        private static async Task CheckBranchIgnoredStatus(BuildTrackingSettings settings, Action onComplete)
+        private static async Task CheckBranchIgnoredStatus(
+            BuildTrackingSettings settings, GitRefspecViewState state, Action onComplete)
         {
-            if (s_IsCheckingStatus || s_IsOperating)
+            if (state.IsCheckingStatus || state.IsOperating)
             {
                 return;
             }
 
-            s_IsCheckingStatus = true;
+            state.IsCheckingStatus = true;
             try
             {
                 var projectGit = new GitRepository(settings.GetProjectGitPath(), settings.IsLogging);
-                s_IsBranchIgnored = await projectGit.IsBranchIgnoredInFetch(settings.GetBranchName());
-                s_HasCheckedRefspec = true;
-                s_CheckErrorMessage = null;
+                state.IsBranchIgnored = await projectGit.IsBranchIgnoredInFetch(settings.GetBranchName());
+                state.HasCheckedRefspec = true;
+                state.CheckErrorMessage = null;
             }
             catch (Exception ex)
             {
@@ -325,74 +331,76 @@ namespace BuildTool.Tracking.Editor
                 {
                     Debug.LogWarning($"[BuildTrackingSettingsProvider] Check branch status error: {ex.Message}");
                 }
-                s_HasCheckedRefspec = false;
-                s_CheckErrorMessage = ex.Message;
+                state.HasCheckedRefspec = false;
+                state.CheckErrorMessage = ex.Message;
             }
             finally
             {
-                s_IsCheckingStatus = false;
+                state.IsCheckingStatus = false;
                 EditorApplication.delayCall += () => onComplete?.Invoke();
             }
         }
 
-        private static async Task IgnoreBranch(BuildTrackingSettings settings, Action onComplete)
+        private static async Task IgnoreBranch(
+            BuildTrackingSettings settings, GitRefspecViewState state, Action onComplete)
         {
-            if (s_IsOperating)
+            if (state.IsOperating)
             {
                 return;
             }
 
-            s_IsOperating = true;
+            state.IsOperating = true;
             onComplete?.Invoke();
 
             try
             {
                 var projectGit = new GitRepository(settings.GetProjectGitPath(), settings.IsLogging);
                 await projectGit.IgnoreBranchInFetch(settings.GetBranchName());
-                s_IsBranchIgnored = await projectGit.IsBranchIgnoredInFetch(settings.GetBranchName());
-                s_HasCheckedRefspec = true;
-                s_CheckErrorMessage = null;
+                state.IsBranchIgnored = await projectGit.IsBranchIgnoredInFetch(settings.GetBranchName());
+                state.HasCheckedRefspec = true;
+                state.CheckErrorMessage = null;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[BuildTrackingSettingsProvider] Failed to ignore branch in local Git: {ex.Message}");
-                s_HasCheckedRefspec = false;
-                s_CheckErrorMessage = ex.Message;
+                state.HasCheckedRefspec = false;
+                state.CheckErrorMessage = ex.Message;
             }
             finally
             {
-                s_IsOperating = false;
+                state.IsOperating = false;
                 EditorApplication.delayCall += () => onComplete?.Invoke();
             }
         }
 
-        private static async Task UnignoreBranch(BuildTrackingSettings settings, Action onComplete)
+        private static async Task UnignoreBranch(
+            BuildTrackingSettings settings, GitRefspecViewState state, Action onComplete)
         {
-            if (s_IsOperating)
+            if (state.IsOperating)
             {
                 return;
             }
 
-            s_IsOperating = true;
+            state.IsOperating = true;
             onComplete?.Invoke();
 
             try
             {
                 var projectGit = new GitRepository(settings.GetProjectGitPath(), settings.IsLogging);
                 await projectGit.UnignoreBranchInFetch(settings.GetBranchName());
-                s_IsBranchIgnored = await projectGit.IsBranchIgnoredInFetch(settings.GetBranchName());
-                s_HasCheckedRefspec = true;
-                s_CheckErrorMessage = null;
+                state.IsBranchIgnored = await projectGit.IsBranchIgnoredInFetch(settings.GetBranchName());
+                state.HasCheckedRefspec = true;
+                state.CheckErrorMessage = null;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[BuildTrackingSettingsProvider] Failed to unignore branch in local Git: {ex.Message}");
-                s_HasCheckedRefspec = false;
-                s_CheckErrorMessage = ex.Message;
+                state.HasCheckedRefspec = false;
+                state.CheckErrorMessage = ex.Message;
             }
             finally
             {
-                s_IsOperating = false;
+                state.IsOperating = false;
                 EditorApplication.delayCall += () => onComplete?.Invoke();
             }
         }

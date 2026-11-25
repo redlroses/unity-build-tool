@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System.IO;
+using NUnit.Framework;
 using UnityEditor;
 
 namespace BuildTool.Editor.Tests
@@ -102,8 +103,57 @@ namespace BuildTool.Editor.Tests
         public void BuildUI_BuildSamplesTab_CanBeConstructedWithoutThrowing()
         {
             var window = EditorWindow.CreateInstance<BuildToolWelcomeWindow>();
-            Assert.DoesNotThrow(() => window.BuildUI());
+            Assert.DoesNotThrow(() =>
+            {
+                window.BuildUI();
+                window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.Samples);
+            });
             UnityEngine.Object.DestroyImmediate(window);
+        }
+
+        [Test]
+        public void ResolveSamplePackagePath_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() =>
+            {
+                _ = BuildToolWelcomeWindow.ResolveSamplePackagePath(BuildToolWelcomeWindow.BuildManifestSamplePath);
+                _ = BuildToolWelcomeWindow.ResolveSamplePackagePath(BuildToolWelcomeWindow.BuildInfoSamplePath);
+                _ = BuildToolWelcomeWindow.ResolveSamplePackagePath(string.Empty);
+            });
+        }
+
+        [Test]
+        public void ResolveSampleReadmePath_FindsReadmesForPackageSamples()
+        {
+            var manifestReadme = BuildToolWelcomeWindow.ResolveSampleReadmePath(
+                BuildToolWelcomeWindow.BuildManifestSamplePath,
+                "Build Manifest Extension"
+            );
+            Assert.IsFalse(string.IsNullOrEmpty(manifestReadme));
+            Assert.IsTrue(File.Exists(manifestReadme));
+
+            var infoReadme = BuildToolWelcomeWindow.ResolveSampleReadmePath(
+                BuildToolWelcomeWindow.BuildInfoSamplePath,
+                "Build Info Display"
+            );
+            Assert.IsFalse(string.IsNullOrEmpty(infoReadme));
+            Assert.IsTrue(File.Exists(infoReadme));
+        }
+
+        [Test]
+        public void FindImportedSampleDirectory_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() =>
+            {
+                _ = BuildToolWelcomeWindow.FindImportedSampleDirectory(
+                    BuildToolWelcomeWindow.BuildManifestSamplePath,
+                    "Build Manifest Extension"
+                );
+                _ = BuildToolWelcomeWindow.FindImportedSampleDirectory(
+                    BuildToolWelcomeWindow.BuildInfoSamplePath,
+                    "Build Info Display"
+                );
+            });
         }
 
         [Test]

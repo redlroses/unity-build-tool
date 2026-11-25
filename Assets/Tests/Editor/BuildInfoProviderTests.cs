@@ -1,5 +1,7 @@
+using System.Reflection;
 using BuildTool.Tracking;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace BuildTool.Editor.Tests
 {
@@ -67,6 +69,19 @@ namespace BuildTool.Editor.Tests
             var reloaded = BuildInfoProvider.BuildInfo;
             Assert.IsNotNull(reloaded);
             Assert.AreNotEqual("999", reloaded.Index);
+        }
+
+        [Test]
+        public void Reset_HasSubsystemRegistrationRuntimeInitializeAttribute()
+        {
+            var method = typeof(BuildInfoProvider).GetMethod(
+                "Reset",
+                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            Assert.IsNotNull(method);
+
+            var attribute = method.GetCustomAttribute<RuntimeInitializeOnLoadMethodAttribute>();
+            Assert.IsNotNull(attribute);
+            Assert.AreEqual(RuntimeInitializeLoadType.SubsystemRegistration, attribute.loadType);
         }
     }
 }

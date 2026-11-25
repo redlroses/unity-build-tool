@@ -28,6 +28,7 @@ namespace BuildTool.Editor.Tests
         {
             var builder = new PatternLocationPathBuilder
             {
+                UseCustomPattern = true,
                 Pattern = "{ProfileName}_{Version}/{ProductName}"
             };
 

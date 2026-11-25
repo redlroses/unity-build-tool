@@ -20,9 +20,46 @@ namespace BuildTool.Editor.Notifications
     /// </summary>
     public abstract class NotificationChannelBase : INotificationChannel
     {
-        private static readonly object s_HttpClientLock = new();
-        private static HttpClient s_CachedHttpClient;
-        private static string s_CachedProxyKey;
+        private sealed class HttpClientCache
+        {
+            private readonly object _lock = new();
+            private HttpClient _client;
+            private string _proxyKey;
+
+            public HttpClient GetOrCreate(string cacheKey, Uri proxyUri, string bypassRaw)
+            {
+                lock (_lock)
+                {
+                    if (_client != null &&
+                        string.Equals(_proxyKey, cacheKey, StringComparison.Ordinal))
+                    {
+                        return _client;
+                    }
+
+                    var handler = new HttpClientHandler
+                    {
+                        UseProxy = true
+                    };
+
+                    if (proxyUri != null)
+                    {
+                        var bypassList = ParseProxyBypass(bypassRaw, out var bypassOnLocal);
+                        handler.Proxy = new WebProxy(proxyUri, bypassOnLocal, bypassList);
+                    }
+
+                    var client = new HttpClient(handler)
+                    {
+                        Timeout = TimeSpan.FromSeconds(20)
+                    };
+
+                    _client = client;
+                    _proxyKey = cacheKey;
+                    return client;
+                }
+            }
+        }
+
+        private static readonly HttpClientCache s_HttpClientCache = new();
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         private struct WinHttpCurrentUserIeProxyConfig
@@ -482,35 +519,7 @@ namespace BuildTool.Editor.Notifications
             Uri.TryCreate(url, UriKind.Absolute, out var targetUri);
             var (proxyUri, bypassRaw) = ResolveProxyConfig(targetUri);
             var cacheKey = $"{proxyUri?.AbsoluteUri ?? string.Empty}|{bypassRaw ?? string.Empty}";
-
-            lock (s_HttpClientLock)
-            {
-                if (s_CachedHttpClient != null &&
-                    string.Equals(s_CachedProxyKey, cacheKey, StringComparison.Ordinal))
-                {
-                    return s_CachedHttpClient;
-                }
-
-                var handler = new HttpClientHandler
-                {
-                    UseProxy = true
-                };
-
-                if (proxyUri != null)
-                {
-                    var bypassList = ParseProxyBypass(bypassRaw, out var bypassOnLocal);
-                    handler.Proxy = new WebProxy(proxyUri, bypassOnLocal, bypassList);
-                }
-
-                var client = new HttpClient(handler)
-                {
-                    Timeout = TimeSpan.FromSeconds(20)
-                };
-
-                s_CachedHttpClient = client;
-                s_CachedProxyKey = cacheKey;
-                return client;
-            }
+            return s_HttpClientCache.GetOrCreate(cacheKey, proxyUri, bypassRaw);
         }
 
         private static (Uri ProxyUri, string BypassList) ResolveProxyConfig(Uri targetUri)

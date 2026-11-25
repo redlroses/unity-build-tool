@@ -181,10 +181,9 @@ namespace BuildTool.Editor
             return defaultValue;
         }
 
-        private static Action s_CachedPump;
-        private static SynchronizationContext s_CachedContext;
-
-        private static void PumpSynchronizationContext()
+        private static void PumpSynchronizationContext(
+            ref SynchronizationContext cachedContext,
+            ref Action cachedPump)
         {
             var context = SynchronizationContext.Current;
             if (context == null)
@@ -193,31 +192,31 @@ namespace BuildTool.Editor
                 return;
             }
 
-            if (context != s_CachedContext)
+            if (context != cachedContext)
             {
-                s_CachedContext = context;
+                cachedContext = context;
                 var method = context.GetType().GetMethod(
                     "Exec", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (method != null)
                 {
                     try
                     {
-                        s_CachedPump = (Action)Delegate.CreateDelegate(typeof(Action), context, method);
+                        cachedPump = (Action)Delegate.CreateDelegate(typeof(Action), context, method);
                     }
                     catch
                     {
-                        s_CachedPump = () => method.Invoke(context, null);
+                        cachedPump = () => method.Invoke(context, null);
                     }
                 }
                 else
                 {
-                    s_CachedPump = null;
+                    cachedPump = null;
                 }
             }
 
-            if (s_CachedPump != null)
+            if (cachedPump != null)
             {
-                s_CachedPump();
+                cachedPump();
             }
             else
             {
@@ -240,10 +239,12 @@ namespace BuildTool.Editor
                     return task.GetAwaiter().GetResult();
                 }
 
+                SynchronizationContext cachedContext = null;
+                Action cachedPump = null;
                 var start = DateTime.UtcNow;
                 while (!task.IsCompleted)
                 {
-                    PumpSynchronizationContext();
+                    PumpSynchronizationContext(ref cachedContext, ref cachedPump);
                     Thread.Sleep(5);
                     if ((DateTime.UtcNow - start).TotalHours > 12)
                     {
@@ -251,7 +252,7 @@ namespace BuildTool.Editor
                     }
                 }
 
-                PumpSynchronizationContext();
+                PumpSynchronizationContext(ref cachedContext, ref cachedPump);
                 return task.GetAwaiter().GetResult();
             }
             finally

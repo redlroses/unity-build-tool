@@ -64,6 +64,7 @@ namespace BuildTool.Tracking
             }
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         internal static void Reset()
         {
             lock (s_Lock)

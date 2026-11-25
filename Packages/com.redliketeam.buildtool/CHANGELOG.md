@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- Headers should be listed in this order: Added, Changed, Deprecated, Removed, Fixed, Security -->
 
+## [1.0.4] - 2026-11-26
+### Added
+- Added nested sample `.unitypackage` exports (`Samples/BuildInfo.unitypackage`, `Samples/BuildManifest.unitypackage`) and companion READMEs to `pack_unitypackage.py`.
+- Added nested `.unitypackage` sample discovery, import, and README resolution support to `BuildToolWelcomeWindow`, along with unit tests in `BuildToolWelcomeWindowTests` and `BuildInfoProviderTests`.
+
+### Changed
+- Updated minimum supported Unity version to Unity 6 LTS (`6000.0.23f1`) in `package.json` and documentation.
+- Refactored static caches and UI state across `BuildCLI`, `GitRepository`, `PackagePathHelper`, `BuildTrackingSettingsProvider`, `NotificationChannelBase`, and `BuildTool` to eliminate unnecessary mutable static fields.
+- Removed unsupported CSS fallback values from `var(...)` declarations in UI Toolkit `.uss` stylesheets.
+
+### Fixed
+- Fixed Fast Enter Play Mode (Domain Reload disabled) caching in `BuildInfoProvider` by decorating `Reset()` with `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`.
+- Fixed `PatternLocationPathBuilderTests.GetLocationPathName_NullProfile_DoesNotThrow` to explicitly enable `UseCustomPattern`.
+- Persisted active tab selection across domain reloads in `BuildToolWelcomeWindow`.
+
 ## [1.0.3] - 2026-11-26
 ### Added
 - Added `LICENSE.md` to the UPM package while excluding it from `.unitypackage` exports.

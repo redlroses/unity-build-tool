@@ -184,10 +184,8 @@ namespace BuildTool.Editor
 
         internal static int SynchronousWaitDepth;
 
-        private static Action s_SignalTick;
-        private static bool s_SignalTickResolved;
-        private static Func<bool> s_IsScriptReloadRequested;
-        private static bool s_IsScriptReloadRequestedResolved;
+        private static readonly Lazy<Action> s_SignalTick = new(ResolveSignalTick);
+        private static readonly Lazy<Func<bool>> s_IsScriptReloadRequested = new(ResolveIsScriptReloadRequested);
         private static readonly System.Diagnostics.Stopwatch s_TickThrottleStopwatch =
             System.Diagnostics.Stopwatch.StartNew();
         private static long s_LastTickMs = -1000;
@@ -197,26 +195,45 @@ namespace BuildTool.Editor
             SynchronousWaitDepth <= 0 &&
             (PipelineService == null || PipelineService is UnityBuildPipelineService);
 
-        internal static void RequestEditorTick()
+        private static Action ResolveSignalTick()
         {
-            if (!s_SignalTickResolved)
+            try
             {
-                s_SignalTickResolved = true;
-                try
+                var method = typeof(EditorApplication).GetMethod(
+                    "SignalTick", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                if (method != null)
                 {
-                    var method = typeof(EditorApplication).GetMethod(
-                        "SignalTick", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    if (method != null)
-                    {
-                        s_SignalTick = (Action)Delegate.CreateDelegate(typeof(Action), method);
-                    }
-                }
-                catch
-                {
+                    return (Action)Delegate.CreateDelegate(typeof(Action), method);
                 }
             }
+            catch
+            {
+            }
 
-            s_SignalTick?.Invoke();
+            return null;
+        }
+
+        private static Func<bool> ResolveIsScriptReloadRequested()
+        {
+            try
+            {
+                var method = typeof(InternalEditorUtility).GetMethod(
+                    "IsScriptReloadRequested", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                if (method != null)
+                {
+                    return (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), method);
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        internal static void RequestEditorTick()
+        {
+            s_SignalTick.Value?.Invoke();
         }
 
         internal static void RequestEditorTickThrottled(int intervalMs = 150)
@@ -233,24 +250,8 @@ namespace BuildTool.Editor
 
         internal static bool IsScriptReloadRequested()
         {
-            if (!s_IsScriptReloadRequestedResolved)
-            {
-                s_IsScriptReloadRequestedResolved = true;
-                try
-                {
-                    var method = typeof(InternalEditorUtility).GetMethod(
-                        "IsScriptReloadRequested", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    if (method != null)
-                    {
-                        s_IsScriptReloadRequested = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), method);
-                    }
-                }
-                catch
-                {
-                }
-            }
-
-            return s_IsScriptReloadRequested != null && s_IsScriptReloadRequested();
+            var callback = s_IsScriptReloadRequested.Value;
+            return callback != null && callback();
         }
 
         internal static void ScheduleOnEditorDelayCall(Action callback)

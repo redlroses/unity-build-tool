@@ -7,7 +7,10 @@
     "com.unity.sdk.linux-x86_64": "1.1.1",
     "com.unity.test-framework": "1.7.0",
     "com.unity.toolchain.win-x86_64-linux": "1.1.1",
-    "com.unity.ugui": "2.5.0"
+    "com.unity.ugui": "2.5.0",
+    "com.unity.modules.adaptiveperformance": "1.0.0",
+    "com.unity.modules.physicscore2d": "1.0.0",
+    "com.unity.modules.vectorgraphics": "1.0.0"
   },
   "testables": [
     "com.redliketeam.buildtool"
