@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 4994084924274699176}
   - component: {fileID: 1166607214873858020}
   - component: {fileID: 821710979982834855}
-  - component: {fileID: 6581925206118531866}
   - component: {fileID: 6712502165470078924}
   m_Layer: 5
   m_Name: BuildInfoText
@@ -138,23 +137,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &6581925206118531866
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 71537746121490120}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_IgnoreReversedGraphics: 1
-  m_BlockingObjects: 0
-  m_BlockingMask:
-    serializedVersion: 2
-    bits: 4294967295
 --- !u!114 &6712502165470078924
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,6 +161,7 @@ GameObject:
   - component: {fileID: 6765140307556335821}
   - component: {fileID: 8575098564235777072}
   - component: {fileID: 5966658901267624660}
+  - component: {fileID: 6581925206118531866}
   - component: {fileID: 3664733672148906195}
   m_Layer: 5
   m_Name: BuildInfoDisplay
@@ -253,6 +236,23 @@ MonoBehaviour:
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
   m_PresetInfoIsWorld: 0
+--- !u!114 &6581925206118531866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8126202933205357602}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreReversedGraphics: 1
+  m_BlockingObjects: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    bits: 4294967295
 --- !u!114 &3664733672148906195
 MonoBehaviour:
   m_ObjectHideFlags: 0

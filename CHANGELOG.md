@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Fixed `BuildToolWelcomeWindow.GetIcon` logging console errors on missing primary editor icons by resolving icons via `EditorGUIUtility.LoadIcon` / `EditorGUIUtility.FindTexture` before falling back, and replaced invalid built-in icon names (`d_BuildSettings.Editor`, `d_About`) with `BuildSettings.Editor` and `console.infoicon`.
+- Fixed `BuildInfoDisplay.prefab` in the Build Info sample having `GraphicRaycaster` attached to `BuildInfoText` instead of the root `Canvas` GameObject `BuildInfoDisplay`, eliminating the missing `Canvas` warning when opening `BuildInfoDemo.unity`.
 
 ## [1.0.4] - 2026-11-26
 ### Added
