@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using BuildTool.Editor.Notifications;
 using BuildTool.Editor.Processors;
@@ -15,7 +16,7 @@ namespace BuildTool.Editor
     {
         public const string WindowTitle = "Welcome to Build Tool";
         public static string UssPath => PackagePathHelper.GetAssetPath("Editor/Core/Welcome/BuildToolWelcomeWindow.uss");
-        public const string DefaultVersion = "1.0.4";
+        public const string DefaultVersion = "1.0.5";
         public const string ShowOnUpdatePrefKey = "build_tool_welcome_show_on_update";
         public const string ShowOnStartPrefKey = "build_tool_welcome_show_on_startup";
         public const string LastVersionPrefKey = "build_tool_welcome_last_version";
@@ -35,7 +36,7 @@ namespace BuildTool.Editor
         private const string GitRepoUrl = "https://github.com/redlroses/unity-build-tool";
         private const string GitIssuesUrl = "https://github.com/redlroses/unity-build-tool/issues";
         private const string GitPackageUrl =
-            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.4";
+            "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.5";
 
         internal enum WelcomeTab
         {
@@ -89,7 +90,7 @@ namespace BuildTool.Editor
         {
             var window = GetWindow<BuildToolWelcomeWindow>(WindowTitle);
             window.minSize = new Vector2(640, 480);
-            window.titleContent = new GUIContent(WindowTitle, GetIcon("d_BuildSettings.Editor", "d_CustomTool"));
+            window.titleContent = new GUIContent(WindowTitle, GetIcon("BuildSettings.Editor", "d_CustomTool"));
             window.Show();
         }
 
@@ -114,21 +115,52 @@ namespace BuildTool.Editor
             return DefaultVersion;
         }
 
+        private static readonly MethodInfo s_LoadIconMethod = typeof(EditorGUIUtility).GetMethod(
+            "LoadIcon",
+            BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+            null,
+            new[] { typeof(string) },
+            null);
+
+        private static Texture TryLoadIcon(string iconName)
+        {
+            if (string.IsNullOrEmpty(iconName))
+            {
+                return null;
+            }
+
+            if (s_LoadIconMethod != null)
+            {
+                try
+                {
+                    return s_LoadIconMethod.Invoke(null, new object[] { iconName }) as Texture;
+                }
+                catch
+                {
+                }
+            }
+
+            var found = EditorGUIUtility.FindTexture(iconName);
+            if (found != null)
+            {
+                return found;
+            }
+
+            var content = EditorGUIUtility.IconContent(iconName);
+            return content != null ? content.image : null;
+        }
+
         public static Texture GetIcon(string iconName, string fallbackIconName = null)
         {
-            var content = EditorGUIUtility.IconContent(iconName);
-            if (content != null && content.image != null)
+            var icon = TryLoadIcon(iconName);
+            if (icon != null)
             {
-                return content.image;
+                return icon;
             }
 
             if (!string.IsNullOrEmpty(fallbackIconName))
             {
-                var fallbackContent = EditorGUIUtility.IconContent(fallbackIconName);
-                if (fallbackContent != null && fallbackContent.image != null)
-                {
-                    return fallbackContent.image;
-                }
+                return TryLoadIcon(fallbackIconName);
             }
 
             return null;
@@ -199,7 +231,7 @@ namespace BuildTool.Editor
 
             var iconImage = new Image();
             iconImage.AddToClassList("welcome-title-icon");
-            iconImage.image = GetIcon("d_BuildSettings.Editor", "d_CustomTool");
+            iconImage.image = GetIcon("BuildSettings.Editor", "d_CustomTool");
             titleGroup.Add(iconImage);
 
             var titleLabel = new Label("Build Tool for Unity");
@@ -235,7 +267,7 @@ namespace BuildTool.Editor
                 "d_UnityEditor.ConsoleWindow", "TextAsset Icon");
             AddNavItem(sidebar, WelcomeTab.Resources, "Resources & Support", "d__Help", "d_Linked");
             AddNavItem(sidebar, WelcomeTab.AboutAndCredits, "About & Credits",
-                "d_UnityEditor.InspectorWindow", "d_About");
+                "d_UnityEditor.InspectorWindow", "console.infoicon");
 
             parent.Add(sidebar);
         }
@@ -371,27 +403,6 @@ namespace BuildTool.Editor
             profileBadge.AddToClassList(profileCount > 0 ? "welcome-badge-success" : "welcome-badge-warning");
             box.Add(profileBadge);
 
-            if (profileCount == 0)
-            {
-                var createProfileBtn = new Button(() =>
-                {
-                    if (!EditorApplication.ExecuteMenuItem("Assets/Create/Build Profile"))
-                    {
-                        EditorApplication.ExecuteMenuItem("Assets/Create/Build/Build Profile");
-                    }
-                })
-                {
-                    text = "+ Create Profile",
-                    tooltip = "Create a new Build Profile asset"
-                };
-                createProfileBtn.AddToClassList("welcome-action-btn");
-                createProfileBtn.style.height = 20;
-                createProfileBtn.style.paddingLeft = 8;
-                createProfileBtn.style.paddingRight = 8;
-                createProfileBtn.style.fontSize = 10;
-                box.Add(createProfileBtn);
-            }
-
             bool isTracking = BuildTool.IsTrackingEnabled;
             var trackingBadge = new Label(isTracking ? "● Git Tracking Active" : "○ Git Tracking Standby");
             trackingBadge.AddToClassList("welcome-badge");
@@ -486,7 +497,7 @@ namespace BuildTool.Editor
 
             AddFeatureCard(
                 container,
-                "d_BuildSettings.Editor",
+                "BuildSettings.Editor",
                 "Multi-Platform Batch Builds",
                 "Queue Standalone, Android, iOS, WebGL, and custom profiles. Execute sequential compilation "
                 + "passes with automatic error stops or continue-on-error behavior."

@@ -1,7 +1,7 @@
 {
   "name": "com.redliketeam.buildtool",
   "displayName": "Build Tool",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "unity": "6000.0",
   "description": "An automation tool that allows you to configure and run sequential builds for different platforms through a dedicated editor window. It has a modular structure and supports custom extensions for automating pre- and post-build tasks. The tool also tracks a shared build index via Git, helping you keep track of build versions and status.",
   "keywords": [
@@ -29,5 +29,5 @@
       "path": "Samples~/BuildInfo"
     }
   ],
-  "unityRelease": "23f1"
+  "unityRelease": "36f1"
 }

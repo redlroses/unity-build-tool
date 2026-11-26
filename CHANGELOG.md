@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- Headers should be listed in this order: Added, Changed, Deprecated, Removed, Fixed, Security -->
 
+## [1.0.5] - 2026-11-26
+### Changed
+- Updated minimum supported Unity version to Unity 6 LTS (`6000.0.36f1`) in `package.json` and documentation.
+
+### Removed
+- Removed the `+ Create Profile` button from the Getting Started readiness box in `BuildToolWelcomeWindow`.
+
+### Fixed
+- Fixed `BuildToolWelcomeWindow.GetIcon` logging console errors on missing primary editor icons by resolving icons via `EditorGUIUtility.LoadIcon` / `EditorGUIUtility.FindTexture` before falling back, and replaced invalid built-in icon names (`d_BuildSettings.Editor`, `d_About`) with `BuildSettings.Editor` and `console.infoicon`.
+
 ## [1.0.4] - 2026-11-26
 ### Added
 - Added nested sample `.unitypackage` exports (`Samples/BuildInfo.unitypackage`, `Samples/BuildManifest.unitypackage`) and companion READMEs to `pack_unitypackage.py`.

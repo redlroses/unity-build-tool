@@ -1,6 +1,9 @@
 ﻿using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine.UIElements;
+using UnityEngine.TestTools;
 
 namespace BuildTool.Editor.Tests
 {
@@ -76,9 +79,45 @@ namespace BuildTool.Editor.Tests
         {
             Assert.DoesNotThrow(() =>
             {
-                var icon = BuildToolWelcomeWindow.GetIcon("d_BuildSettings.Editor", "d_CustomTool");
+                var icon = BuildToolWelcomeWindow.GetIcon("BuildSettings.Editor", "d_CustomTool");
                 _ = icon;
             });
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void GetIcon_MissingPrimaryIcon_DoesNotLogErrorAndFallsBackSilently()
+        {
+            Assert.DoesNotThrow(() =>
+            {
+                var icon = BuildToolWelcomeWindow.GetIcon("NonExistentIcon_BuildTool_Test", "d_CustomTool");
+                _ = icon;
+            });
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void BuildUI_AllTabs_CanBeConstructedWithoutErrors()
+        {
+            var window = EditorWindow.CreateInstance<BuildToolWelcomeWindow>();
+            try
+            {
+                Assert.DoesNotThrow(() =>
+                {
+                    window.BuildUI();
+                    window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.GettingStarted);
+                    window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.Features);
+                    window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.Samples);
+                    window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.ReleaseNotes);
+                    window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.Resources);
+                    window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.AboutAndCredits);
+                });
+                LogAssert.NoUnexpectedReceived();
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(window);
+            }
         }
 
         [Test]
@@ -193,6 +232,23 @@ namespace BuildTool.Editor.Tests
                 window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.AboutAndCredits);
             });
             UnityEngine.Object.DestroyImmediate(window);
+        }
+
+        [Test]
+        public void BuildUI_GettingStartedTab_DoesNotContainCreateProfileButton()
+        {
+            var window = EditorWindow.CreateInstance<BuildToolWelcomeWindow>();
+            try
+            {
+                window.BuildUI();
+                window.SwitchTab(BuildToolWelcomeWindow.WelcomeTab.GettingStarted);
+                var buttons = window.rootVisualElement.Query<Button>().ToList();
+                Assert.IsFalse(buttons.Any(b => b.text != null && b.text.Contains("Create Profile")));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(window);
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 # Unity Build Tool
 
-> ⚠️ **Requires Unity 6 LTS (6000.0.23f1) or higher.**  
+> ⚠️ **Requires Unity 6 LTS (6000.0.36f1) or higher.**  
 > Built natively to leverage the Unity 6 Build Profiles system (`UnityEditor.Build.Profile`).
 
 An automation and pipeline orchestration tool for Unity that configures, executes, and tracks sequential multi-platform builds with custom pre/post-processing extensions, notifications, and CI/CD CLI support.
@@ -34,14 +34,14 @@ An automation and pipeline orchestration tool for Unity that configures, execute
 2. Click **+** → **Add package from git URL...**
 3. Paste:
    ```text
-   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.4
+   https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.5
    ```
 
 Alternatively, add it directly to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.4"
+    "com.redliketeam.buildtool": "https://github.com/redlroses/unity-build-tool.git?path=Packages/com.redliketeam.buildtool#v1.0.5"
   }
 }
 ```
